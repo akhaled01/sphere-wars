@@ -9,7 +9,6 @@ impl Plugin for PlayerPlugin {
             Update,
             (
                 track_scene_instances,
-                rotate_player_child_once_ready,
                 move_player,
                 handle_jumping,
                 apply_gravity,

@@ -1,4 +1,4 @@
-use bevy::color::palettes::basic::SILVER;
+use bevy::color::palettes::basic::{SILVER, BLUE, RED, GREEN, YELLOW};
 use bevy::prelude::*;
 
 use crate::player::{CameraController, FollowCamera, Grounded, Player, RotateOnLoad, Velocity};
@@ -21,7 +21,7 @@ fn setup_world(
     // camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 7., 14.0).looking_at(Vec3::new(0., 1., 0.), Vec3::Y),
+        Transform::from_xyz(2.0, 6.0, 2.0),
         FollowCamera,
         CameraController {
             yaw: 0.0,
@@ -29,13 +29,42 @@ fn setup_world(
         },
     ));
 
-    // ground
+    // Ground - silver color
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(500.0, 500.0).subdivisions(10))),
         MeshMaterial3d(materials.add(Color::from(SILVER))),
     ));
 
-    // light
+    // Direction markers
+    // Forward (Blue Cube)
+    commands.spawn((
+        Mesh3d(meshes.add(Cuboid::new(2.0, 4.0, 2.0))),
+        MeshMaterial3d(materials.add(Color::from(BLUE))),
+        Transform::from_xyz(0.0, 2.0, -10.0),
+    ));
+
+    // Back (Red Sphere)
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(2.0))),
+        MeshMaterial3d(materials.add(Color::from(RED))),
+        Transform::from_xyz(0.0, 2.0, 10.0),
+    ));
+
+    // Left (Green Torus)
+    commands.spawn((
+        Mesh3d(meshes.add(Torus::new(2.0, 0.5))),
+        MeshMaterial3d(materials.add(Color::from(GREEN))),
+        Transform::from_xyz(-10.0, 2.0, 0.0),
+    ));
+
+    // Right (Yellow Capsule)
+    commands.spawn((
+        Mesh3d(meshes.add(Capsule3d::new(1.0, 2.0))),
+        MeshMaterial3d(materials.add(Color::from(YELLOW))),
+        Transform::from_xyz(10.0, 2.0, 0.0),
+    ));
+
+    // Main light
     commands.spawn((
         PointLight {
             shadows_enabled: true,

@@ -9,25 +9,6 @@ pub fn track_scene_instances(mut commands: Commands, player_query: Query<Entity,
     }
 }
 
-pub fn rotate_player_child_once_ready(
-    mut commands: Commands,
-    scene_query: Query<(Entity, &Children), With<RotateOnLoad>>,
-    mut transform_query: Query<&mut Transform>,
-) {
-    for (entity, children) in scene_query.iter() {
-        for child in children.iter() {
-            if let Ok(mut transform) = transform_query.get_mut(child) {
-                // Rotate the child 90 degrees around Y
-                transform.rotation = Quat::from_rotation_y(-std::f32::consts::FRAC_PI_2);
-
-                // Optional: remove the RotateOnLoad tag so it runs once
-                commands.entity(entity).remove::<RotateOnLoad>();
-                break;
-            }
-        }
-    }
-}
-
 pub fn grab_mouse(
     mut window: Single<&mut Window>,
     mouse: Res<ButtonInput<MouseButton>>,
