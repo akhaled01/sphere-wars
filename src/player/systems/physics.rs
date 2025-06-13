@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::player::{Grounded, Player, Velocity, FollowCamera};
 
-const PLAYER_SPEED: f32 = 3.0;
+const PLAYER_SPEED: f32 = 10.0;
 const GRAVITY: f32 = -9.8;
 const JUMP_FORCE: f32 = 5.5;
 
