@@ -1,6 +1,6 @@
 use bevy::{prelude::*, window::CursorGrabMode};
 
-use crate::player::{Player, RotateOnLoad};
+use crate::components::player::{Player, RotateOnLoad};
 
 pub fn track_scene_instances(mut commands: Commands, player_query: Query<Entity, Added<Player>>) {
     for entity in player_query.iter() {

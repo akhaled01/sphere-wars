@@ -1,6 +1,6 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
-use crate::player::{CameraController, FollowCamera, Player, RotateOnLoad};
+use crate::components::player::{CameraController, FollowCamera, Player, RotateOnLoad};
 
 pub fn follow_camera_system(
     player_query: Query<&Transform, (With<Player>, Without<FollowCamera>)>,

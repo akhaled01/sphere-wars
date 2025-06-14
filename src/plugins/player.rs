@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use crate::player::systems::{camera::*, physics::*, setup::*};
+use crate::systems::player::{camera::*, physics::*, setup::*};
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -15,6 +16,7 @@ impl Plugin for PlayerPlugin {
                 follow_camera_system,
                 camera_look_sys,
                 grab_mouse,
+                handle_collisions,
             ),
         );
     }

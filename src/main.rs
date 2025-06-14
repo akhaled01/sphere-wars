@@ -1,10 +1,12 @@
 use bevy::prelude::*;
+use plugins::*;
 
-mod player;
-mod world;
+mod components;
+mod plugins;
+mod systems;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, world::WorldPlugin, player::PlayerPlugin))
+        .add_plugins((DefaultPlugins, WorldPlugin, PlayerPlugin))
         .run();
 }
