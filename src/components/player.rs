@@ -21,6 +21,7 @@ pub struct FollowCamera;
 #[derive(Component)]
 pub struct CameraController {
     pub yaw: f32,   // Horizontal rotation (around Y axis)
+    pub pitch: f32, // Vertical rotation (around X axis)
     pub sensitivity: f32,
 }
 

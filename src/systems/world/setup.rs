@@ -18,6 +18,7 @@ pub fn setup_world(
         FollowCamera,
         CameraController {
             yaw: 0.0,
+            pitch: 0.0,
             sensitivity: 0.1,
         },
     ));
@@ -91,14 +92,14 @@ pub fn setup_world(
     // Ambient light for overall brightness
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 0.3,
+        brightness: 0.5, // Increased from 0.3 for better wall visibility
         ..default()
     });
 
     // player
     commands.spawn((
         SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank.glb"))),
-        Transform::from_xyz(50.0, 0.0, 50.0),
+        Transform::from_xyz(-4.0, 2.5, -4.0), // Spawn in first 2-tile wide corridor with proper offset
         Player,
         Velocity::default(),
         Grounded(true),

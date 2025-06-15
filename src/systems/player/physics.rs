@@ -2,11 +2,11 @@ use bevy::prelude::*;
 
 use crate::components::{player::{FollowCamera, Grounded, Player, Velocity}, world::Collidable};
 
-const PLAYER_SPEED: f32 = 5.0;
+const PLAYER_SPEED: f32 = 15.0; // Increased speed for larger corridors
 const GRAVITY: f32 = -9.8;
 const JUMP_FORCE: f32 = 5.5;
-const PLAYER_RADIUS: f32 = 0.3; // Slightly smaller player collision radius
-const WALL_SIZE: f32 = 0.5; // Half-size of wall cubes
+const PLAYER_RADIUS: f32 = 0.5; // Adjusted for 6-unit wide corridors
+const WALL_SIZE: f32 = 3.0; // Updated to match new wall half-size (6-unit scale)
 
 pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -137,5 +137,6 @@ fn is_position_blocked(
             return true;
         }
     }
+    
     false
 }
