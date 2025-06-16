@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-
-#[derive(Component)]
-pub struct Crosshairs;
+use crate::components::world::Crosshairs;
 
 pub fn setup_crosshairs(mut commands: Commands) {
     // Create crosshairs container in the center of the screen

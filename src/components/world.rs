@@ -21,3 +21,6 @@ pub struct PlayerDot;
 pub struct SharedMaze {
     pub grid: MazeGrid,
 }
+
+#[derive(Component)]
+pub struct Crosshairs;
