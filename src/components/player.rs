@@ -11,12 +11,10 @@ pub struct Velocity {
 #[derive(Component)]
 pub struct Grounded(pub bool);
 
-
 // Camera Components
 
 #[derive(Component)]
 pub struct FollowCamera;
-
 
 #[derive(Component)]
 pub struct CameraController {

@@ -29,7 +29,7 @@ impl MazeNode {
 }
 
 // Proper maze generation algorithm based on the JavaScript implementation
-fn generate_maze(width: usize, height: usize, _difficulty: f32) -> MazeGrid {
+pub fn generate_maze(width: usize, height: usize, _difficulty: f32) -> MazeGrid {
     let count = width * height;
     let mut nodes = vec![MazeNode::new(); count];
     let mut rng = rng();

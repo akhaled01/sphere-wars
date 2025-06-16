@@ -41,16 +41,16 @@ pub fn camera_look_sys(
             // Update yaw and pitch
             controller.yaw -= delta.x * controller.sensitivity;
             controller.pitch -= delta.y * controller.sensitivity;
-            
+
             // Clamp pitch to prevent over-rotation (looking too far up/down)
             controller.pitch = controller.pitch.clamp(-89.0, 89.0);
-            
+
             let yaw_radians = controller.yaw.to_radians();
             let pitch_radians = controller.pitch.to_radians();
-            
+
             let yaw_quat = Quat::from_axis_angle(Vec3::Y, yaw_radians);
             let pitch_quat = Quat::from_axis_angle(Vec3::X, pitch_radians);
-            
+
             (yaw_quat, pitch_quat)
         } else {
             return;

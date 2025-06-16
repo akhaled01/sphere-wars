@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::components::player::*;
 
-use super::{maze, lights}; 
+use super::{lights, maze};
 
 // render ground, lights, and camera
 pub fn setup_world(
@@ -24,13 +24,7 @@ pub fn setup_world(
     ));
 
     commands.spawn((
-        Mesh3d(
-            meshes.add(
-                Plane3d::default()
-                    .mesh()
-                    .size(400.0, 400.0)
-            ),
-        ),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(400.0, 400.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
         Transform::from_xyz(200.0, 0.0, 200.0),
     ));

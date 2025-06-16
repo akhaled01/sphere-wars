@@ -1,7 +1,7 @@
-use bevy::prelude::*;
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
-use bevy::window::{PresentMode, WindowPlugin, WindowTheme};
 use bevy::DefaultPlugins;
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::prelude::*;
+use bevy::window::{PresentMode, WindowPlugin, WindowTheme};
 
 pub fn get_init_plugins() -> impl PluginGroup {
     DefaultPlugins

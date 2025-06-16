@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::components::{player::{FollowCamera, Grounded, Player, Velocity}, world::Collidable};
+use crate::components::{
+    player::{FollowCamera, Grounded, Player, Velocity},
+    world::Collidable,
+};
 
 const PLAYER_SPEED: f32 = 15.0; // Increased speed for larger corridors
 const GRAVITY: f32 = -9.8;
@@ -47,16 +50,16 @@ pub fn move_player(
         }
 
         let move_delta = direction * PLAYER_SPEED * time.delta_secs();
-        
+
         // Try to move in each direction separately to allow wall sliding
         let current_pos = transform.translation;
-        
+
         // Try X movement first
         let new_x = current_pos + Vec3::new(move_delta.x, 0.0, 0.0);
         if !is_position_blocked(new_x, &collidable_q) {
             transform.translation.x = new_x.x;
         }
-        
+
         // Try Z movement
         let new_z = transform.translation + Vec3::new(0.0, 0.0, move_delta.z);
         if !is_position_blocked(new_z, &collidable_q) {
@@ -78,7 +81,7 @@ pub fn apply_gravity(
             velocity.linear_velocity.y += GRAVITY * time.delta_secs();
             grounded.0 = false;
         }
-        
+
         // Apply vertical velocity
         transform.translation.y += velocity.linear_velocity.y * time.delta_secs();
     }
@@ -110,7 +113,7 @@ pub fn handle_collisions(
                 Vec3::new(0.0, 0.0, 0.1),
                 Vec3::new(0.0, 0.0, -0.1),
             ];
-            
+
             for offset in offsets.iter() {
                 let test_pos = pos + *offset;
                 if !is_position_blocked(test_pos, &collidable_q) {
@@ -131,12 +134,12 @@ fn is_position_blocked(
         let diff = player_pos - collidable_transform.translation;
         let distance_x = diff.x.abs();
         let distance_z = diff.z.abs();
-        
+
         // Check if player overlaps with wall
         if distance_x < (PLAYER_RADIUS + WALL_SIZE) && distance_z < (PLAYER_RADIUS + WALL_SIZE) {
             return true;
         }
     }
-    
+
     false
 }
