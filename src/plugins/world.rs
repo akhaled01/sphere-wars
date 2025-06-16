@@ -14,12 +14,11 @@ impl Plugin for WorldPlugin {
                 setup_world,
                 setup_fps_counter,
                 setup_minimap,
-                update_minimap,
             ),
         );
         app.add_systems(
             Update,
-            (update_fps_counter, update_player_position_on_minimap),
+            (update_fps_counter, update_minimap, update_player_position_on_minimap),
         );
     }
 }
