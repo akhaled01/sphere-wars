@@ -2,6 +2,8 @@ use crate::components::world::Collidable;
 use bevy::prelude::*;
 use rand::{Rng, rng};
 
+use super::lights::setup_maze_lighting;
+
 type MazeGrid = Vec<Vec<bool>>;
 
 // Node representation: visited, north, south, west, east
@@ -157,9 +159,9 @@ fn nodes_to_matrix(nodes: &[MazeNode], width: usize, height: usize) -> MazeGrid 
         let matrix_y = (node_y * 3) + 1;
 
         // Create 2x2 corridor area for each node
-        matrix[matrix_y][matrix_x] = false;         // Top-left
-        matrix[matrix_y][matrix_x + 1] = false;     // Top-right
-        matrix[matrix_y + 1][matrix_x] = false;     // Bottom-left
+        matrix[matrix_y][matrix_x] = false; // Top-left
+        matrix[matrix_y][matrix_x + 1] = false; // Top-right
+        matrix[matrix_y + 1][matrix_x] = false; // Bottom-left
         matrix[matrix_y + 1][matrix_x + 1] = false; // Bottom-right
 
         // Create 2-tile wide passages between nodes
@@ -198,18 +200,16 @@ pub fn render_maze(
 
     // Create enhanced wall material with much better visibility
     let wall_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.8, 0.8, 0.9), // Lighter, more visible color
+        base_color: Color::srgb(0.8, 0.8, 0.9),
         metallic: 0.0,
         perceptual_roughness: 0.6,
         reflectance: 0.6,
-        // Enable proper lighting response
         unlit: false,
         ..default()
     });
 
-    // Create floor material for better contrast
     let floor_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.2, 0.3, 0.2), // Dark green floor
+        base_color: Color::srgb(0.2, 0.3, 0.2),
         metallic: 0.0,
         perceptual_roughness: 0.9,
         reflectance: 0.1,
@@ -218,55 +218,30 @@ pub fn render_maze(
     });
 
     let floor_mesh = meshes.add(Mesh::from(Cuboid {
-        half_size: Vec3::new(2.0, 0.1, 2.0), // Floor tiles same size
+        half_size: Vec3::new(2.0, 0.1, 2.0),
     }));
 
-    // Add ambient lighting to reduce black areas
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 12000.0, // Increased for larger area
-            shadows_enabled: false,
-            color: Color::srgb(1.0, 1.0, 1.0),
-            ..default()
-        },
-        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
-    ));
+    setup_maze_lighting(&mut commands);
 
-    // Reduced lighting for better performance - single central light
-    commands.spawn((
-        PointLight {
-            intensity: 50_000_000.0, // High intensity for large area
-            range: 300.0,
-            shadows_enabled: false, // Disable shadows for performance
-            ..default()
-        },
-        Transform::from_xyz(100.0, 30.0, 100.0), // Center of 200x200 floor
-    ));
-
-    // Scale factor for very wide corridors (6 units wide for comfortable movement)
     let scale_factor = 6.0;
-
-    // Offset to center the maze on the 200x200 floor
-    // Maze will be 37*6 = 222 units, so we offset by (200-222)/2 = -11 to center it
-    let maze_offset = -11.0; // Center the larger maze on 200x200 floor
+    let maze_offset = 89.0; // Center maze on 400x400 floor (200 - maze_size/2)
 
     for (y, row) in maze.iter().enumerate() {
         for (x, &is_wall) in row.iter().enumerate() {
             if is_wall {
                 let wall_position = Vec3::new(
                     x as f32 * scale_factor + maze_offset,
-                    9.0, // Wall height center (18 units tall)
+                    9.0,
                     y as f32 * scale_factor + maze_offset,
                 );
 
                 commands.spawn((
-                    Mesh3d(meshes.add(Cuboid::new(6.0, 18.0, 6.0))), // 6x18x6 walls for 6-unit scale
+                    Mesh3d(meshes.add(Cuboid::new(6.0, 18.0, 6.0))),
                     MeshMaterial3d(wall_material.clone()),
                     Transform::from_translation(wall_position),
                     Collidable,
                 ));
             } else {
-                // Spawn floor tile for corridors to improve visibility
                 commands.spawn((
                     Mesh3d(floor_mesh.clone()),
                     MeshMaterial3d(floor_material.clone()),
@@ -274,7 +249,7 @@ pub fn render_maze(
                         x as f32 * scale_factor + maze_offset,
                         0.1,
                         y as f32 * scale_factor + maze_offset,
-                    ), // Floor slightly above ground
+                    ),
                 ));
             }
         }

@@ -1,8 +1,8 @@
-use bevy::{color::palettes::css::SILVER, prelude::*};
+use bevy::prelude::*;
 
 use crate::components::player::*;
 
-use super::maze; 
+use super::{maze, lights}; 
 
 // render ground, lights, and camera
 pub fn setup_world(
@@ -28,83 +28,22 @@ pub fn setup_world(
             meshes.add(
                 Plane3d::default()
                     .mesh()
-                    .size(100.0, 100.0)
+                    .size(400.0, 400.0)
             ),
         ),
-        MeshMaterial3d(materials.add(Color::from(SILVER))),
-        Transform::from_xyz(50.0, 0.0, 50.0),
+        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
+        Transform::from_xyz(200.0, 0.0, 200.0),
     ));
 
-    // Improved lighting setup
-    // Main overhead light
-    commands.spawn((
-        PointLight {
-            shadows_enabled: true,
-            intensity: 15_000_000.,
-            range: 150.0,
-            shadow_depth_bias: 0.1,
-            ..default()
-        },
-        Transform::from_xyz(50.0, 25.0, 50.0),
-    ));
-
-    // Additional corner lights for better coverage
-    commands.spawn((
-        PointLight {
-            shadows_enabled: false,
-            intensity: 8_000_000.,
-            range: 80.0,
-            ..default()
-        },
-        Transform::from_xyz(20.0, 20.0, 20.0),
-    ));
-
-    commands.spawn((
-        PointLight {
-            shadows_enabled: false,
-            intensity: 8_000_000.,
-            range: 80.0,
-            ..default()
-        },
-        Transform::from_xyz(80.0, 20.0, 20.0),
-    ));
-
-    commands.spawn((
-        PointLight {
-            shadows_enabled: false,
-            intensity: 8_000_000.,
-            range: 80.0,
-            ..default()
-        },
-        Transform::from_xyz(20.0, 20.0, 80.0),
-    ));
-
-    commands.spawn((
-        PointLight {
-            shadows_enabled: false,
-            intensity: 8_000_000.,
-            range: 80.0,
-            ..default()
-        },
-        Transform::from_xyz(80.0, 20.0, 80.0),
-    ));
-
-    // Ambient light for overall brightness
-    commands.insert_resource(AmbientLight {
-        color: Color::WHITE,
-        brightness: 0.5, // Increased from 0.3 for better wall visibility
-        ..default()
-    });
-
-    // player
     commands.spawn((
         SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank.glb"))),
-        Transform::from_xyz(-4.0, 2.5, -4.0), // Spawn in first 2-tile wide corridor with proper offset
+        Transform::from_xyz(96.0, 2.5, 96.0), // Spawn in first corridor with new maze positioning
         Player,
         Velocity::default(),
         Grounded(true),
         RotateOnLoad,
     ));
 
+    lights::setup_world_lighting(&mut commands);
     maze::render_maze(commands, meshes, materials);
 }

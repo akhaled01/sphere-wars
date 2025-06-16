@@ -63,7 +63,9 @@ pub fn camera_look_sys(
     }
 
     // Apply only yaw rotation to player/tank (no pitch)
+    // Add 90-degree correction to align tank's forward direction with camera
+    let tank_correction = Quat::from_axis_angle(Vec3::Y, 90.0_f32.to_radians());
     for mut transform in query_set.p1().iter_mut() {
-        transform.rotation = yaw_rotation;
+        transform.rotation = yaw_rotation * tank_correction;
     }
 }
