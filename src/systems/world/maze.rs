@@ -1,10 +1,11 @@
 use crate::components::world::Collidable;
+use crate::components::world::SharedMaze;
 use bevy::prelude::*;
 use rand::{Rng, rng};
 
 use super::lights::setup_maze_lighting;
 
-type MazeGrid = Vec<Vec<bool>>;
+pub type MazeGrid = Vec<Vec<bool>>;
 
 // Node representation: visited, north, south, west, east
 #[derive(Clone, Debug)]
@@ -190,14 +191,23 @@ fn nodes_to_matrix(nodes: &[MazeNode], width: usize, height: usize) -> MazeGrid 
     matrix
 }
 
+pub fn initialize_shared_maze(mut commands: Commands) {
+    // Generate the maze once and store it as a resource
+    let width = 12;
+    let height = 12;
+    let grid = generate_maze(width, height, 1.0);
+    
+    commands.insert_resource(SharedMaze {
+        grid,
+    });
+}
+
 pub fn render_maze(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    shared_maze: Res<SharedMaze>,
 ) {
-    // Use smaller maze to fit with 2-tile wide corridors (12x12 nodes = 37x37 matrix)
-    let maze = generate_maze(12, 12, 1.0);
-
     // Create enhanced wall material with much better visibility
     let wall_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.8, 0.8, 0.9),
@@ -226,7 +236,7 @@ pub fn render_maze(
     let scale_factor = 6.0;
     let maze_offset = 89.0; // Center maze on 400x400 floor (200 - maze_size/2)
 
-    for (y, row) in maze.iter().enumerate() {
+    for (y, row) in shared_maze.grid.iter().enumerate() {
         for (x, &is_wall) in row.iter().enumerate() {
             if is_wall {
                 let wall_position = Vec3::new(

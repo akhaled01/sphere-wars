@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::systems::world::maze::MazeGrid;
+
 #[derive(Component)]
 pub struct Collidable;
 
@@ -14,3 +16,8 @@ pub struct MinimapPixel;
 
 #[derive(Component)]
 pub struct PlayerDot;
+
+#[derive(Resource)]
+pub struct SharedMaze {
+    pub grid: MazeGrid,
+}

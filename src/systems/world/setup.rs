@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::components::player::*;
 
-use super::{lights, maze};
+use super::lights;
 
 // render ground, lights, and camera
 pub fn setup_world(
@@ -39,5 +39,4 @@ pub fn setup_world(
     ));
 
     lights::setup_world_lighting(&mut commands);
-    maze::render_maze(commands, meshes, materials);
 }

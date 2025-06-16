@@ -1,13 +1,10 @@
-use crate::components::world::{Minimap, MinimapPixel, PlayerDot};
-use crate::systems::world::maze::generate_maze;
+use crate::components::world::{Minimap, MinimapPixel, PlayerDot, SharedMaze};
 use bevy::prelude::*;
 
 const MINIMAP_SIZE: f32 = 200.0;
 const MINIMAP_MARGIN: f32 = 20.0;
-const MAZE_WIDTH: usize = 12;
-const MAZE_HEIGHT: usize = 12;
 const SCALE_FACTOR: f32 = 6.0;
-const MAZE_OFFSET: f32 = 2.0;
+const MAZE_OFFSET: f32 = 89.0; // Match the 3D world maze offset
 
 #[derive(Component)]
 pub struct MinimapInitialized;
@@ -34,23 +31,24 @@ pub fn update_minimap(
     mut commands: Commands,
     minimap_query: Query<Entity, (With<Minimap>, Without<MinimapInitialized>)>,
     player_query: Query<&Transform, (With<Camera>, Without<MinimapPixel>, Without<PlayerDot>)>,
+    shared_maze: Res<SharedMaze>,
 ) {
     // Only initialize the minimap once
     if let Ok(minimap_entity) = minimap_query.single() {
-        // Generate maze using same algorithm as 3D world
-        let maze = generate_maze(MAZE_WIDTH, MAZE_HEIGHT, 1.0);
+        // Use the shared maze instead of generating a new one
+        let maze = &shared_maze.grid;
         let maze_size = maze.len();
         let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
 
         println!("Initializing minimap: maze_size={}, pixel_size={}", maze_size, pixel_size);
 
-        // Create minimap pixels
+        // Create minimap pixel
         for (y, row) in maze.iter().enumerate() {
             for (x, &is_wall) in row.iter().enumerate() {
                 let color = if is_wall {
                     Color::srgb(0.9, 0.9, 1.0) // Bright white-blue for walls
                 } else {
-                    Color::srgb(0.1, 0.6, 0.1) // Bright green for corridors
+                    Color::srgb(0.1, 0.6, 0.1) // Bright green for corridor
                 };
 
                 commands.entity(minimap_entity).with_children(|parent| {
@@ -108,6 +106,7 @@ pub fn update_minimap(
 pub fn update_player_position_on_minimap(
     mut player_dot_query: Query<&mut Node, With<PlayerDot>>,
     player_query: Query<&Transform, (With<Camera>, Without<PlayerDot>)>,
+    shared_maze: Res<SharedMaze>,
 ) {
     if let (Ok(mut player_dot_node), Ok(player_transform)) =
         (player_dot_query.single_mut(), player_query.single())
@@ -115,7 +114,7 @@ pub fn update_player_position_on_minimap(
         let player_pos = player_transform.translation;
 
         // Convert 3D world coordinates to minimap coordinates
-        let maze_size = (MAZE_WIDTH * 3) + 1; // Based on nodes_to_matrix calculation
+        let maze_size = shared_maze.grid.len();
         let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
         let minimap_x = ((player_pos.x - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
         let minimap_z = ((player_pos.z - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
