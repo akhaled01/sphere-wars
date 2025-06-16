@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::components::player::*;
+use crate::components::{
+    player::{CameraController, FollowCamera, Grounded, Player, RotateOnLoad, Velocity},
+    projectile::Weapon,
+};
 
 use super::lights;
 
@@ -36,6 +39,7 @@ pub fn setup_world(
         Velocity::default(),
         Grounded(true),
         RotateOnLoad,
+        Weapon::default(),
     ));
 
     lights::setup_world_lighting(&mut commands);

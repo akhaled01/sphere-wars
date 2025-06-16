@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::systems::player::{camera::*, physics::*, setup::*};
+use crate::systems::player::{camera::*, physics::*, setup::*, shooting::*};
 
 pub struct PlayerPlugin;
 
@@ -17,6 +17,8 @@ impl Plugin for PlayerPlugin {
                 camera_look_sys,
                 grab_mouse,
                 handle_collisions,
+                hitscan_shooting,
+                cleanup_hit_effects,
             ),
         );
     }
