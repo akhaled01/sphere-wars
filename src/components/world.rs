@@ -15,6 +15,9 @@ pub struct Minimap;
 pub struct MinimapPixel;
 
 #[derive(Component)]
+pub struct MinimapInitialized;
+
+#[derive(Component)]
 pub struct PlayerDot;
 
 #[derive(Resource)]

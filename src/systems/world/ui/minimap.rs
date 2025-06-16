@@ -1,13 +1,10 @@
-use crate::components::world::{Minimap, MinimapPixel, PlayerDot, SharedMaze};
+use crate::components::world::{Minimap, MinimapPixel, PlayerDot, SharedMaze, MinimapInitialized};
 use bevy::prelude::*;
 
 const MINIMAP_SIZE: f32 = 200.0;
 const MINIMAP_MARGIN: f32 = 20.0;
 const SCALE_FACTOR: f32 = 6.0;
 const MAZE_OFFSET: f32 = 89.0; // Match the 3D world maze offset
-
-#[derive(Component)]
-pub struct MinimapInitialized;
 
 pub fn setup_minimap(mut commands: Commands) {
     // Create minimap container in bottom right corner
