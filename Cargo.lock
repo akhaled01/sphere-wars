@@ -200,12 +200,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.98"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
-
-[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1374,15 +1368,6 @@ dependencies = [
  "web-sys",
  "wgpu-types",
  "winit",
-]
-
-[[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -3946,14 +3931,13 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "bincode",
  "clap",
+ "glam 0.25.0",
  "serde",
+ "serde_json",
  "shared",
  "tokio",
- "tracing",
- "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -3971,8 +3955,9 @@ version = "0.1.0"
 dependencies = [
  "bevy_reflect",
  "glam 0.25.0",
- "rand 0.8.5",
+ "rand 0.9.1",
  "serde",
+ "uuid",
 ]
 
 [[package]]
