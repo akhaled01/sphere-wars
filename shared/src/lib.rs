@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use glam::{Vec3, Quat};
+use bevy::math::{Vec3, Quat};
 use std::collections::HashMap;
 use rand::{rng, Rng};
 
@@ -135,7 +135,7 @@ pub struct HitscanResult {
     pub distance: f32,
 }
 
-type MazeGrid = Vec<Vec<bool>>;
+pub type MazeGrid = Vec<Vec<bool>>;
 
 #[derive(Clone, Debug)]
 struct MazeNode {

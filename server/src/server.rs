@@ -1,10 +1,14 @@
+use bevy::math::{Quat, Vec3};
 use std::collections::HashMap;
-use tokio::net::UdpSocket;
 use std::net::SocketAddr;
-use glam::Vec3;
+use tokio::net::UdpSocket;
 use uuid::Uuid;
 
-use shared::{generate_maze, ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig};
+use shared::{
+    ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig, generate_maze,
+};
+
+use crate::utils::log_info;
 
 pub struct GameServer {
     listener: UdpSocket,
@@ -44,31 +48,29 @@ impl GameServer {
     // this handles messages, and replies accordingly
     async fn mux(&mut self, addr: SocketAddr, msg: &str) {
         let client_msg: Result<ClientMessage, _> = serde_json::from_str(msg);
-        
+        log_info(&format!("Received from {}: {}", addr, msg));
         match client_msg {
-            Ok(message) => {
-                match message {
-                    ClientMessage::JoinGame { player_name } => {
-                        self.handle_join_game(addr, player_name).await;
-                    },
-                    ClientMessage::LeaveGame => {
-                        self.handle_leave_game(addr).await;
-                    },
-                    ClientMessage::PlayerMove { position, rotation } => {
-                        self.handle_player_move(addr, position, rotation).await;
-                    },
-                    ClientMessage::PlayerShoot { origin, direction } => {
-                        self.handle_player_shoot(addr, origin, direction).await;
-                    },
-                    ClientMessage::Respawn => {
-                        self.handle_respawn(addr).await;
-                    },
+            Ok(message) => match message {
+                ClientMessage::JoinGame { player_name } => {
+                    self.handle_join_game(addr, player_name).await;
+                }
+                ClientMessage::LeaveGame => {
+                    self.handle_leave_game(addr).await;
+                }
+                ClientMessage::PlayerMove { position, rotation } => {
+                    self.handle_player_move(addr, position, rotation).await;
+                }
+                ClientMessage::PlayerShoot { origin, direction } => {
+                    self.handle_player_shoot(addr, origin, direction).await;
+                }
+                ClientMessage::Respawn => {
+                    self.handle_respawn(addr).await;
                 }
             },
             Err(e) => {
                 // Send error response for invalid message format
-                let error_msg = ServerMessage::Error { 
-                    message: format!("Invalid message format: {}", e) 
+                let error_msg = ServerMessage::Error {
+                    message: format!("Invalid message format: {}", e),
                 };
                 if let Ok(response) = serde_json::to_string(&error_msg) {
                     self.send_message(addr, &response).await;
@@ -96,16 +98,15 @@ impl GameServer {
     }
 
     fn can_start_game(&self) -> bool {
-        self.players.len() >= self.min_players && 
-        matches!(self.state, GameState::WaitingForPlayers)
+        self.players.len() >= self.min_players && matches!(self.state, GameState::WaitingForPlayers)
     }
 
     // Handler methods for each message type
     async fn handle_join_game(&mut self, addr: SocketAddr, player_name: String) {
         // Check if player already exists
         if self.addr_to_id.contains_key(&addr) {
-            let error_msg = ServerMessage::Error { 
-                message: "Player already in game".to_string() 
+            let error_msg = ServerMessage::Error {
+                message: "Player already in game".to_string(),
             };
             if let Ok(response) = serde_json::to_string(&error_msg) {
                 self.send_message(addr, &response).await;
@@ -115,8 +116,8 @@ impl GameServer {
 
         // Check if room is full
         if self.players.len() >= self.max_players {
-            let error_msg = ServerMessage::Error { 
-                message: "Game is full".to_string() 
+            let error_msg = ServerMessage::Error {
+                message: "Game is full".to_string(),
             };
             if let Ok(response) = serde_json::to_string(&error_msg) {
                 self.send_message(addr, &response).await;
@@ -139,7 +140,9 @@ impl GameServer {
         }
 
         // Broadcast player joined to others
-        let joined_msg = ServerMessage::PlayerJoined { player: player.clone() };
+        let joined_msg = ServerMessage::PlayerJoined {
+            player: player.clone(),
+        };
         if let Ok(response) = serde_json::to_string(&joined_msg) {
             self.broadcast_to_others(addr, &response).await;
         }
@@ -159,10 +162,12 @@ impl GameServer {
         // Check if game can start
         if self.can_start_game() {
             self.state = GameState::GameStarted;
-            self.game_start_time = Some(std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs_f64());
+            self.game_start_time = Some(
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs_f64(),
+            );
 
             let maze = generate_maze(12, 12, &self.difficulty);
             let start_msg = ServerMessage::GameStarted { maze };
@@ -175,8 +180,8 @@ impl GameServer {
     async fn handle_leave_game(&mut self, addr: SocketAddr) {
         if let Some(player_id) = self.addr_to_id.remove(&addr) {
             if let Some(player) = self.players.remove(&player_id) {
-                let left_msg = ServerMessage::PlayerLeft { 
-                    player_id: player.id 
+                let left_msg = ServerMessage::PlayerLeft {
+                    player_id: player.id,
                 };
                 if let Ok(response) = serde_json::to_string(&left_msg) {
                     self.broadcast(&response).await;
@@ -185,13 +190,13 @@ impl GameServer {
         }
     }
 
-    async fn handle_player_move(&mut self, addr: SocketAddr, position: Vec3, rotation: glam::Quat) {
+    async fn handle_player_move(&mut self, addr: SocketAddr, position: Vec3, rotation: Quat) {
         if let Some(player_id) = self.addr_to_id.get(&addr) {
             if let Some(player) = self.players.get_mut(player_id) {
                 player.position = position;
                 player.rotation = rotation;
 
-                let move_msg = ServerMessage::PlayerMoved { 
+                let move_msg = ServerMessage::PlayerMoved {
                     player_id: player_id.clone(),
                     position,
                     rotation,
@@ -231,7 +236,7 @@ impl GameServer {
                 if let Some(ref hit_player_id) = hit_result.hit_player_id {
                     if let Some(hit_player) = self.players.get_mut(hit_player_id) {
                         let died = hit_player.take_damage(weapon_config.damage);
-                        
+
                         let damage_msg = ServerMessage::PlayerDamaged {
                             player_id: hit_player_id.clone(),
                             damage: weapon_config.damage,

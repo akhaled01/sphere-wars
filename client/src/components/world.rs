@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::systems::world::maze::MazeGrid;
+use shared::MazeGrid;
 
 #[derive(Component)]
 pub struct Collidable;

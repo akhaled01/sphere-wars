@@ -1,4 +1,4 @@
-use crate::components::world::{Minimap, MinimapPixel, PlayerDot, SharedMaze, MinimapInitialized};
+use crate::components::world::{Minimap, MinimapInitialized, MinimapPixel, PlayerDot, SharedMaze};
 use bevy::prelude::*;
 
 const MINIMAP_SIZE: f32 = 200.0;
@@ -37,7 +37,10 @@ pub fn update_minimap(
         let maze_size = maze.len();
         let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
 
-        println!("Initializing minimap: maze_size={}, pixel_size={}", maze_size, pixel_size);
+        println!(
+            "Initializing minimap: maze_size={}, pixel_size={}",
+            maze_size, pixel_size
+        );
 
         // Create minimap pixel
         for (y, row) in maze.iter().enumerate() {

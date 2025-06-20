@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::systems::world::{
-    maze::{initialize_shared_maze, render_maze},
+    maze::render_maze,
     setup::setup_world,
     ui::{crosshairs::*, fps::*, minimap::*},
 };
@@ -13,7 +13,6 @@ impl Plugin for WorldPlugin {
         app.add_systems(
             Startup,
             (
-                initialize_shared_maze,
                 render_maze,
                 setup_world,
                 setup_fps_counter,
