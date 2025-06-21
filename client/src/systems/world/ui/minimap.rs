@@ -3,8 +3,7 @@ use bevy::prelude::*;
 
 const MINIMAP_SIZE: f32 = 200.0;
 const MINIMAP_MARGIN: f32 = 20.0;
-const SCALE_FACTOR: f32 = 6.0;
-const MAZE_OFFSET: f32 = 89.0; // Match the 3D world maze offset
+const TILE_SIZE: f32 = 4.0; // Match the maze rendering tile size
 
 pub fn setup_minimap(mut commands: Commands) {
     // Create minimap container in bottom right corner
@@ -73,8 +72,14 @@ pub fn update_minimap(
             let player_pos = player_transform.translation;
 
             // Convert 3D world coordinates to minimap coordinates
-            let minimap_x = ((player_pos.x - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
-            let minimap_z = ((player_pos.z - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
+            // The maze is centered, so we need to account for the offset
+            let maze_width = maze[0].len() as f32 * TILE_SIZE;
+            let maze_height = maze.len() as f32 * TILE_SIZE;
+            let maze_offset_x = -maze_width / 2.0;
+            let maze_offset_z = -maze_height / 2.0;
+            
+            let minimap_x = ((player_pos.x - maze_offset_x) / TILE_SIZE) * pixel_size;
+            let minimap_z = ((player_pos.z - maze_offset_z) / TILE_SIZE) * pixel_size;
 
             // Clamp to minimap bounds
             let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
@@ -114,10 +119,16 @@ pub fn update_player_position_on_minimap(
         let player_pos = player_transform.translation;
 
         // Convert 3D world coordinates to minimap coordinates
-        let maze_size = shared_maze.grid.len();
+        let maze = &shared_maze.grid;
+        let maze_size = maze.len();
         let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
-        let minimap_x = ((player_pos.x - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
-        let minimap_z = ((player_pos.z - MAZE_OFFSET) / SCALE_FACTOR) * pixel_size;
+        let maze_width = maze[0].len() as f32 * TILE_SIZE;
+        let maze_height = maze.len() as f32 * TILE_SIZE;
+        let maze_offset_x = -maze_width / 2.0;
+        let maze_offset_z = -maze_height / 2.0;
+        
+        let minimap_x = ((player_pos.x - maze_offset_x) / TILE_SIZE) * pixel_size;
+        let minimap_z = ((player_pos.z - maze_offset_z) / TILE_SIZE) * pixel_size;
 
         // Clamp to minimap bounds
         let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
