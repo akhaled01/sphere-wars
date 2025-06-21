@@ -52,6 +52,9 @@ impl GameServer {
         log_info(&format!("Received from {}: {}", addr, msg));
         match client_msg {
             Ok(message) => match message {
+                ClientMessage::TestHealth => {
+                    self.handle_test_health(addr).await;
+                }
                 ClientMessage::JoinGame { player_name } => {
                     self.handle_join_game(addr, player_name).await;
                 }
@@ -101,6 +104,15 @@ impl GameServer {
     fn can_start_game(&self) -> bool {
         self.players.len() >= self.min_players && matches!(self.state, GameState::WaitingForPlayers)
     }
+    
+
+    // TestHealth makes sure server is running
+    async fn handle_test_health(&mut self, addr: SocketAddr) {
+        let health_msg = ServerMessage::HealthCheck;
+        if let Ok(response) = serde_json::to_string(&health_msg) {
+            self.send_message(addr, &response).await;
+        }
+    }
 
     // Handler methods for each message type
     async fn handle_join_game(&mut self, addr: SocketAddr, player_name: String) {
@@ -120,6 +132,16 @@ impl GameServer {
             let error_msg = ServerMessage::Error {
                 message: "Game is full".to_string(),
             };
+            if let Ok(response) = serde_json::to_string(&error_msg) {
+                self.send_message(addr, &response).await;
+            }
+            return;
+        }
+
+
+        // check if name is taken
+        if self.players.values().any(|p| p.name == player_name) {
+            let error_msg = ServerMessage::NameAlreadyTaken;
             if let Ok(response) = serde_json::to_string(&error_msg) {
                 self.send_message(addr, &response).await;
             }

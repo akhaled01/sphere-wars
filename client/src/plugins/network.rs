@@ -82,6 +82,10 @@ fn handle_network_messages(
                 let maze = generate_maze_from_config(&maze_config);
                 commands.insert_resource(SharedMaze { grid: maze });
             }
+            ServerMessage::NameAlreadyTaken => {
+                error!("Name already taken");
+                std::process::exit(1);   
+            }
             _ => {}
         }
     }

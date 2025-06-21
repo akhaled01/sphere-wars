@@ -14,8 +14,8 @@ fn main() {
     let args = cli::parse_args();
     
     // Test connection to server first
-    if !test_server_connection(&args.host, args.port, &args.name) {
-        println!("Failed to connect to server. Exiting...");
+    if !test_server_connection(&args.host, args.port) {
+        error!("Failed to connect to server. Exiting...");
         std::process::exit(1);
     }
 
@@ -30,7 +30,7 @@ fn main() {
     network.join_game();
 
     // Start the game with window (only if connection succeeded)
-    println!("Starting game...");
+    info!("Starting game...");
     App::new()
         .add_plugins((get_init_plugins(), WorldPlugin, PlayerPlugin, NetworkPlugin))
         .insert_resource(network)

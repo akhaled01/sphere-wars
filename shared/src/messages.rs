@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use bevy::math::{Vec3, Quat};
@@ -8,6 +7,7 @@ use crate::{GameState, HitscanResult};
 // client to server messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
+    TestHealth,
     JoinGame { player_name: String },
     LeaveGame,
     PlayerMove { position: Vec3, rotation: Quat },
@@ -80,4 +80,6 @@ pub enum ServerMessage {
     Error {
         message: String,
     },
+    NameAlreadyTaken,
+    HealthCheck,
 }
