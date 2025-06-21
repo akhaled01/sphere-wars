@@ -66,4 +66,8 @@ impl NetworkClient {
             let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
         }
     }
+
+    pub fn player_name(&self) -> &str {
+        &self.player_name
+    }
 }

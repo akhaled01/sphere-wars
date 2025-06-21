@@ -5,7 +5,7 @@ use tokio::net::UdpSocket;
 use uuid::Uuid;
 
 use shared::{
-    ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig, generate_maze,
+    ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig,
 };
 
 use crate::utils::log_info;
@@ -19,6 +19,7 @@ pub struct GameServer {
     min_players: usize,
     difficulty: String,
     game_start_time: Option<f64>,
+    maze_seed: Option<u64>,
 }
 
 impl GameServer {
@@ -32,6 +33,7 @@ impl GameServer {
             min_players: 1,
             difficulty,
             game_start_time: None,
+            maze_seed: None,
         }
     }
 
@@ -40,7 +42,6 @@ impl GameServer {
             let mut buf = [0; 1024];
             let (amt, addr) = self.listener.recv_from(&mut buf).await.unwrap();
             let msg = String::from_utf8_lossy(&buf[..amt]);
-            println!("Received from {}: {}", addr, msg);
             self.mux(addr, &msg).await;
         }
     }
@@ -147,7 +148,7 @@ impl GameServer {
             self.broadcast_to_others(addr, &response).await;
         }
 
-        // Send current game state
+        // Send current game state to new player
         let state_msg = ServerMessage::GameState {
             players: self.players.clone(),
             state: self.state.clone(),
@@ -155,6 +156,21 @@ impl GameServer {
             min_players: self.min_players as u32,
             game_start_time: self.game_start_time,
         };
+
+        // If game has already started, send maze info to new player
+        if matches!(self.state, GameState::GameStarted) {
+            if let Some(seed) = self.maze_seed {
+                let maze_msg = ServerMessage::GameStarted {
+                    seed,
+                    width: 20,  // Smaller maze for better performance
+                    height: 20, // Smaller maze for better performance
+                    difficulty: self.difficulty.clone(),
+                };
+                if let Ok(response) = serde_json::to_string(&maze_msg) {
+                    self.send_message(addr, &response).await;
+                }
+            }
+        }
         if let Ok(response) = serde_json::to_string(&state_msg) {
             self.send_message(addr, &response).await;
         }
@@ -169,8 +185,20 @@ impl GameServer {
                     .as_secs_f64(),
             );
 
-            let maze = generate_maze(12, 12, &self.difficulty);
-            let start_msg = ServerMessage::GameStarted { maze };
+            // Generate random seed if not already set
+            if self.maze_seed.is_none() {
+                self.maze_seed = Some(std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos() as u64);
+            }
+
+            let start_msg = ServerMessage::GameStarted {
+                seed: self.maze_seed.unwrap(),
+                width: 12,
+                height: 12,
+                difficulty: self.difficulty.clone(),
+            };
             if let Ok(response) = serde_json::to_string(&start_msg) {
                 self.broadcast(&response).await;
             }

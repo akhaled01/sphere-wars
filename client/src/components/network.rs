@@ -12,11 +12,6 @@ pub struct GameData {
     pub game_start_time: Option<f64>,
 }
 
-#[derive(Resource)]
-pub struct MazeData {
-    pub grid: Vec<Vec<bool>>,
-}
-
 // Component to mark the local player
 #[derive(Component)]
 pub struct LocalPlayer;
