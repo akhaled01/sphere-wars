@@ -184,8 +184,8 @@ impl GameServer {
             if let Some(seed) = self.maze_seed {
                 let maze_msg = ServerMessage::GameStarted {
                     seed,
-                    width: 20,  // Smaller maze for better performance
-                    height: 20, // Smaller maze for better performance
+                    width: 12,  // Consistent maze size
+                    height: 12, // Consistent maze size
                     difficulty: self.difficulty.clone(),
                 };
                 if let Ok(response) = serde_json::to_string(&maze_msg) {
@@ -207,12 +207,9 @@ impl GameServer {
                     .as_secs_f64(),
             );
 
-            // Generate random seed if not already set
+            // Generate fixed seed
             if self.maze_seed.is_none() {
-                self.maze_seed = Some(std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() as u64);
+                self.maze_seed = Some(self.game_start_time.unwrap() as u64);
             }
 
             let start_msg = ServerMessage::GameStarted {
