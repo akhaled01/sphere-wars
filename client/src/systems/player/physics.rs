@@ -4,12 +4,13 @@ use crate::components::{
     player::{FollowCamera, Grounded, Player, Velocity},
     world::Collidable,
 };
+use crate::network::NetworkClient;
 
-const PLAYER_SPEED: f32 = 15.0; // Increased speed for larger corridors
+const PLAYER_SPEED: f32 = 15.0;
 const GRAVITY: f32 = -9.8;
 const JUMP_FORCE: f32 = 5.5;
-const PLAYER_RADIUS: f32 = 0.5; // Adjusted for 6-unit wide corridors
-const WALL_SIZE: f32 = 3.0; // Updated to match new wall half-size (6-unit scale)
+const PLAYER_RADIUS: f32 = 0.5;
+const WALL_SIZE: f32 = 3.0;
 
 pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -17,8 +18,8 @@ pub fn move_player(
     camera_q: Query<&Transform, (With<FollowCamera>, Without<Player>)>,
     collidable_q: Query<&Transform, (With<Collidable>, Without<Player>)>,
     time: Res<Time>,
+    network: Res<NetworkClient>,
 ) {
-    // Get camera's yaw rotation (we only care about Y-axis rotation)
     let camera_transform = if let Ok(transform) = camera_q.single() {
         transform
     } else {
@@ -43,7 +44,6 @@ pub fn move_player(
 
         if direction.length_squared() > 0.0 {
             direction = direction.normalize();
-            // Transform the direction vector by the camera's yaw rotation
             let camera_rotation =
                 Quat::from_rotation_y(camera_transform.rotation.to_euler(EulerRot::YXZ).0);
             direction = camera_rotation * direction;
@@ -51,19 +51,20 @@ pub fn move_player(
 
         let move_delta = direction * PLAYER_SPEED * time.delta_secs();
 
-        // Try to move in each direction separately to allow wall sliding
         let current_pos = transform.translation;
 
-        // Try X movement first
         let new_x = current_pos + Vec3::new(move_delta.x, 0.0, 0.0);
         if !is_position_blocked(new_x, &collidable_q) {
             transform.translation.x = new_x.x;
         }
 
-        // Try Z movement
         let new_z = transform.translation + Vec3::new(0.0, 0.0, move_delta.z);
         if !is_position_blocked(new_z, &collidable_q) {
             transform.translation.z = new_z.z;
+        }
+
+        if move_delta.length_squared() > 0.0 {
+            network.send_move(transform.translation, transform.rotation);
         }
     }
 }
@@ -82,7 +83,6 @@ pub fn apply_gravity(
             grounded.0 = false;
         }
 
-        // Apply vertical velocity
         transform.translation.y += velocity.linear_velocity.y * time.delta_secs();
     }
 }
@@ -102,10 +102,8 @@ pub fn handle_collisions(
     mut player_q: Query<&mut Transform, With<Player>>,
     collidable_q: Query<&Transform, (With<Collidable>, Without<Player>)>,
 ) {
-    // Simple collision system that just ensures player doesn't get stuck
     for mut player_transform in player_q.iter_mut() {
         if is_position_blocked(player_transform.translation, &collidable_q) {
-            // If somehow stuck, try to find a nearby valid position
             let pos = player_transform.translation;
             let offsets = [
                 Vec3::new(0.1, 0.0, 0.0),
@@ -125,7 +123,6 @@ pub fn handle_collisions(
     }
 }
 
-// Simplified collision detection
 fn is_position_blocked(
     player_pos: Vec3,
     collidable_q: &Query<&Transform, (With<Collidable>, Without<Player>)>,
@@ -135,7 +132,6 @@ fn is_position_blocked(
         let distance_x = diff.x.abs();
         let distance_z = diff.z.abs();
 
-        // Check if player overlaps with wall
         if distance_x < (PLAYER_RADIUS + WALL_SIZE) && distance_z < (PLAYER_RADIUS + WALL_SIZE) {
             return true;
         }

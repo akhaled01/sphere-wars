@@ -34,7 +34,7 @@ pub fn setup_world(
 
     commands.spawn((
         SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank.glb"))),
-        Transform::from_xyz(0.0, 2.5, 0.0), // Spawn at center of maze (will be adjusted when maze loads)
+        Transform::from_xyz(0.0, 2.5, 0.0),
         Player,
         Velocity::default(),
         Grounded(true),
