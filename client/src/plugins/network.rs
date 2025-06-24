@@ -50,6 +50,7 @@ fn handle_network_messages(
     mut local_player: ResMut<LocalPlayerResource>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if let Some(message) = network.try_recv() {
         match message {
@@ -62,9 +63,12 @@ fn handle_network_messages(
                     ));
                     // Spawn local player entity with sphere mesh
                     let sphere = Mesh3d(meshes.add(Sphere::new(0.5)));
+                    let sphere_material = MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2)));
+
                     let entity = commands
                         .spawn((
                             sphere,
+                            sphere_material,
                             Transform::from_xyz(0.0, 1.0, 0.0),
                             LocalPlayer,
                             Velocity::default(),
@@ -102,7 +106,11 @@ fn handle_network_messages(
                     *existing = player.clone();
                 }
             }
-            ServerMessage::PlayerMoved { player_id, position, rotation } => {
+            ServerMessage::PlayerMoved {
+                player_id,
+                position,
+                rotation,
+            } => {
                 // Update the player's position in game data
                 if let Some(player) = game_data.players.get_mut(&player_id) {
                     player.position = position;
@@ -178,6 +186,7 @@ fn sync_remote_players(
     mut commands: Commands,
     mut query: Query<(Entity, &RemotePlayer, &mut Transform)>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     let mut existing_players: HashMap<String, Entity> = HashMap::new();
 
@@ -204,7 +213,8 @@ fn sync_remote_players(
     for (id, position, rotation) in players_to_spawn {
         let entity = commands
             .spawn((
-                Mesh3d(meshes.add(Sphere::new(0.5))),
+                Mesh3d(meshes.add(Sphere::new(1.5))),
+                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
                 Transform::from_translation(position).with_rotation(rotation),
                 RemotePlayer { id: id.clone() },
                 Velocity::default(),
