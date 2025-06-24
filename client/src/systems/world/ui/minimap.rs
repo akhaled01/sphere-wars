@@ -6,6 +6,12 @@ use std::collections::HashMap;
 const MINIMAP_SIZE: f32 = 200.0;
 const MINIMAP_MARGIN: f32 = 20.0;
 const TILE_SIZE: f32 = 4.0; // Match the maze rendering tile size
+const MINIMAP_UPDATE_INTERVAL: f32 = 0.1; // Update minimap every 100ms
+
+#[derive(Resource, Default)]
+pub struct MinimapTimer {
+    last_update: f32,
+}
 
 pub fn setup_minimap(mut commands: Commands) {
     // Create minimap container in bottom right corner
@@ -56,10 +62,10 @@ pub fn update_minimap(
                     parent.spawn((
                         Node {
                             position_type: PositionType::Absolute,
-                            left: Val::Px(x as f32 * pixel_size),
-                            top: Val::Px(y as f32 * pixel_size),
-                            width: Val::Px(pixel_size.max(1.0)),
-                            height: Val::Px(pixel_size.max(1.0)),
+                            left: Val::Px(x as f32 * (MINIMAP_SIZE / maze_size as f32)),
+                            top: Val::Px(y as f32 * (MINIMAP_SIZE / maze_size as f32)),
+                            width: Val::Px((MINIMAP_SIZE / maze_size as f32).max(1.0)),
+                            height: Val::Px((MINIMAP_SIZE / maze_size as f32).max(1.0)),
                             ..default()
                         },
                         BackgroundColor(color),
@@ -121,22 +127,32 @@ pub fn update_player_position_on_minimap(
     game_data: Res<GameData>,
     mut commands: Commands,
     minimap_query: Query<Entity, With<Minimap>>,
+    time: Res<Time>,
+    mut minimap_timer: Local<MinimapTimer>,
 ) {
+    // Only update after interval has passed
+    let current_time = time.elapsed_secs();
+    if current_time - minimap_timer.last_update < MINIMAP_UPDATE_INTERVAL {
+        return;
+    }
+    minimap_timer.last_update = current_time;
     if let Ok(player_transform) = player_query.single() {
         if let Ok(mut player_dot_node) = dots.p0().single_mut() {
         let player_pos = player_transform.translation;
 
         // Convert 3D world coordinates to minimap coordinates
         let maze = &shared_maze.grid;
-        let maze_size = maze.len();
-        let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
-        let maze_width = maze[0].len() as f32 * TILE_SIZE;
-        let maze_height = maze.len() as f32 * TILE_SIZE;
-        let maze_offset_x = -maze_width / 2.0;
-        let maze_offset_z = -maze_height / 2.0;
+        let maze_width = maze[0].len() as f32;
+        let maze_height = maze.len() as f32;
+        let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
         
-        let minimap_x = ((player_pos.x - maze_offset_x) / TILE_SIZE) * pixel_size;
-        let minimap_z = ((player_pos.z - maze_offset_z) / TILE_SIZE) * pixel_size;
+        // Convert world position to maze grid coordinates
+        let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
+        let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
+        
+        // Convert grid coordinates to minimap pixels
+        let minimap_x = grid_x * pixel_size;
+        let minimap_z = grid_z * pixel_size;
 
         // Clamp to minimap bounds
         let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
@@ -161,15 +177,17 @@ pub fn update_player_position_on_minimap(
             
             // Convert world coordinates to minimap coordinates
             let maze = &shared_maze.grid;
-            let maze_size = maze.len();
-            let pixel_size = (MINIMAP_SIZE / maze_size as f32).max(2.0);
-            let maze_width = maze[0].len() as f32 * TILE_SIZE;
-            let maze_height = maze.len() as f32 * TILE_SIZE;
-            let maze_offset_x = -maze_width / 2.0;
-            let maze_offset_z = -maze_height / 2.0;
+            let maze_width = maze[0].len() as f32;
+            let maze_height = maze.len() as f32;
+            let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
             
-            let minimap_x = ((player_pos.x - maze_offset_x) / TILE_SIZE) * pixel_size;
-            let minimap_z = ((player_pos.z - maze_offset_z) / TILE_SIZE) * pixel_size;
+            // Convert world position to maze grid coordinates
+            let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
+            let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
+            
+            // Convert grid coordinates to minimap pixels
+            let minimap_x = grid_x * pixel_size;
+            let minimap_z = grid_z * pixel_size;
 
             // Clamp to minimap bounds
             let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);

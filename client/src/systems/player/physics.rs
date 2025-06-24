@@ -123,19 +123,44 @@ pub fn handle_collisions(
     }
 }
 
+fn get_grid_cell(pos: Vec3) -> (i32, i32) {
+    // Use larger grid cells (8x8) to check fewer cells
+    let cell_size = 8.0;
+    let x = (pos.x / cell_size).floor() as i32;
+    let z = (pos.z / cell_size).floor() as i32;
+    (x, z)
+}
+
 fn is_position_blocked(
     player_pos: Vec3,
     collidable_q: &Query<&Transform, (With<Collidable>, Without<Player>)>,
 ) -> bool {
-    for collidable_transform in collidable_q.iter() {
-        let diff = player_pos - collidable_transform.translation;
-        let distance_x = diff.x.abs();
-        let distance_z = diff.z.abs();
-
-        if distance_x < (PLAYER_RADIUS + WALL_SIZE) && distance_z < (PLAYER_RADIUS + WALL_SIZE) {
-            return true;
+    let (grid_x, grid_z) = get_grid_cell(player_pos);
+    
+    // Only check nearby grid cells
+    for dx in -1..=1 {
+        for dz in -1..=1 {
+            // let check_x = (grid_x + dx) as f32 * 8.0;
+            // let check_z = (grid_z + dz) as f32 * 8.0;
+            
+            // Only check walls that are in this grid cell
+            for transform in collidable_q.iter() {
+                let wall_pos = transform.translation;
+                let (wall_grid_x, wall_grid_z) = get_grid_cell(wall_pos);
+                
+                if wall_grid_x == grid_x + dx && wall_grid_z == grid_z + dz {
+                    let diff = player_pos - wall_pos;
+                    let distance_x = diff.x.abs();
+                    let distance_z = diff.z.abs();
+                    
+                    if distance_x < (PLAYER_RADIUS + WALL_SIZE) && 
+                       distance_z < (PLAYER_RADIUS + WALL_SIZE) {
+                        return true;
+                    }
+                }
+            }
         }
     }
-
+    
     false
 }

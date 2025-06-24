@@ -1,14 +1,14 @@
-use bevy::prelude::*;
 use crate::{
     components::{
         network::{GameData, LocalPlayer, RemotePlayer},
-        world::SharedMaze,
-        player::{RotateOnLoad, Velocity, Grounded},
+        player::{Grounded, RotateOnLoad, Velocity},
         projectile::Weapon,
+        world::SharedMaze,
     },
     network::NetworkClient,
 };
-use shared::{ServerMessage, MazeConfig, generate_maze_from_config, Player};
+use bevy::prelude::*;
+use shared::{MazeConfig, Player, ServerMessage, generate_maze_from_config};
 use std::collections::HashMap;
 
 pub struct NetworkPlugin;
@@ -31,12 +31,15 @@ impl Default for LocalPlayerResource {
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameData>()
-           .init_resource::<LocalPlayerResource>()
-           .add_systems(Update, (
-                handle_network_messages,
-                sync_player_transforms,
-                sync_remote_players,
-            ));
+            .init_resource::<LocalPlayerResource>()
+            .add_systems(
+                Update,
+                (
+                    handle_network_messages,
+                    sync_player_transforms,
+                    sync_remote_players,
+                ),
+            );
     }
 }
 
@@ -46,24 +49,35 @@ fn handle_network_messages(
     mut game_data: ResMut<GameData>,
     mut local_player: ResMut<LocalPlayerResource>,
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if let Some(message) = network.try_recv() {
         match message {
             ServerMessage::GameJoined { player_id } => {
                 game_data.my_id = Some(player_id.clone());
                 if local_player.player.is_none() {
-                    local_player.player = Some(Player::new(player_id.clone(), network.player_name().to_string()));
-                    // Spawn local player entity
-                    let entity = commands.spawn((
-                        LocalPlayer,
-                        Transform::default(),
-                        // Add visual components here
-                    )).id();
+                    local_player.player = Some(Player::new(
+                        player_id.clone(),
+                        network.player_name().to_string(),
+                    ));
+                    // Spawn local player entity with sphere mesh
+                    let sphere = Mesh3d(meshes.add(Sphere::new(0.5)));
+                    let entity = commands
+                        .spawn((
+                            sphere,
+                            Transform::from_xyz(0.0, 1.0, 0.0),
+                            LocalPlayer,
+                            Velocity::default(),
+                            Grounded(true),
+                            RotateOnLoad,
+                            Weapon::default(),
+                        ))
+                        .id();
                     local_player.entity = Some(entity);
                     game_data.player_entities.insert(player_id, entity);
                 }
             }
-            ServerMessage::GameState { 
+            ServerMessage::GameState {
                 players,
                 state,
                 max_players,
@@ -99,12 +113,23 @@ fn handle_network_messages(
                 game_data.players.insert(player.id.clone(), player.clone());
                 // Spawn remote player entity if it's not us
                 if Some(player.id.as_str()) != game_data.my_id.as_deref() {
-                    let entity = commands.spawn((
-                        RemotePlayer { id: player.id.clone() },
-                        Transform::from_translation(player.position)
-                            .with_rotation(player.rotation),
-                        // Add visual components here
-                    )).id();
+                    // Adjust position to be on the ground
+                    let mut position = player.position;
+                    position.y = 1.0; // Set tank height to be on ground
+
+                    let entity = commands
+                        .spawn((
+                            Mesh3d(meshes.add(Sphere::new(0.5))),
+                            Transform::from_translation(position).with_rotation(player.rotation),
+                            RemotePlayer {
+                                id: player.id.clone(),
+                            },
+                            Velocity::default(),
+                            Grounded(true),
+                            RotateOnLoad,
+                            Weapon::default(),
+                        ))
+                        .id();
                     game_data.player_entities.insert(player.id, entity);
                 }
             }
@@ -115,14 +140,19 @@ fn handle_network_messages(
                     commands.entity(entity).despawn();
                 }
             }
-            ServerMessage::GameStarted { seed, width, height, difficulty } => {
+            ServerMessage::GameStarted {
+                seed,
+                width,
+                height,
+                difficulty,
+            } => {
                 let maze_config = MazeConfig::new(seed, width, height, &difficulty);
                 let maze = generate_maze_from_config(&maze_config);
                 commands.insert_resource(SharedMaze { grid: maze });
             }
             ServerMessage::NameAlreadyTaken => {
                 error!("Name already taken");
-                std::process::exit(1);   
+                std::process::exit(1);
             }
             _ => {}
         }
@@ -147,10 +177,10 @@ fn sync_remote_players(
     mut game_data: ResMut<GameData>,
     mut commands: Commands,
     mut query: Query<(Entity, &RemotePlayer, &mut Transform)>,
-    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let mut existing_players: HashMap<String, Entity> = HashMap::new();
-    
+
     // Update existing remote players
     for (entity, remote_player, mut transform) in query.iter_mut() {
         if let Some(player) = game_data.players.get(&remote_player.id) {
@@ -159,25 +189,30 @@ fn sync_remote_players(
             existing_players.insert(remote_player.id.clone(), entity);
         }
     }
-    
+
     // Collect players that need to be spawned
-    let players_to_spawn: Vec<_> = game_data.players.iter()
-        .filter(|(id, _)| !existing_players.contains_key(*id) && Some(id.as_str()) != game_data.my_id.as_deref())
+    let players_to_spawn: Vec<_> = game_data
+        .players
+        .iter()
+        .filter(|(id, _)| {
+            !existing_players.contains_key(*id) && Some(id.as_str()) != game_data.my_id.as_deref()
+        })
         .map(|(id, player)| (id.clone(), player.position, player.rotation))
         .collect();
-    
+
     // Spawn new remote players
     for (id, position, rotation) in players_to_spawn {
-        let entity = commands.spawn((
-            SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank.glb"))),
-            Transform::from_translation(position)
-                .with_rotation(rotation),
-            RemotePlayer { id: id.clone() },
-            Velocity::default(),
-            Grounded(true),
-            RotateOnLoad,
-            Weapon::default(),
-        )).id();
+        let entity = commands
+            .spawn((
+                Mesh3d(meshes.add(Sphere::new(0.5))),
+                Transform::from_translation(position).with_rotation(rotation),
+                RemotePlayer { id: id.clone() },
+                Velocity::default(),
+                Grounded(true),
+                RotateOnLoad,
+                Weapon::default(),
+            ))
+            .id();
 
         game_data.player_entities.insert(id, entity);
     }

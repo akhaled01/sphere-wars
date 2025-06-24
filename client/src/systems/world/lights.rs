@@ -1,22 +1,22 @@
 use bevy::prelude::*;
 
 pub fn setup_world_lighting(commands: &mut Commands) {
-    // Single main light with shadows
+    // Use directional light instead of point light for better performance
     commands.spawn((
-        PointLight {
+        DirectionalLight {
             shadows_enabled: true,
-            intensity: 20_000_000.,
-            range: 200.0,
+            illuminance: 15000.0,
             shadow_depth_bias: 0.1,
             ..default()
         },
-        Transform::from_xyz(50.0, 30.0, 50.0),
+        Transform::from_xyz(50.0, 30.0, 50.0)
+            .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
-    // Brighter ambient light to compensate for fewer point lights
+    // Add ambient light for better visibility
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 0.8,
+        brightness: 0.5,
         ..default()
     });
 }

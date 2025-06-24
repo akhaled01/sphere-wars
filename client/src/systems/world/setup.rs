@@ -12,7 +12,6 @@ pub fn setup_world(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
 ) {
     // camera
     commands.spawn((
@@ -27,14 +26,13 @@ pub fn setup_world(
     ));
 
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::default().mesh().size(400.0, 400.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.8, 0.8))),
-        Transform::from_xyz(200.0, 0.0, 200.0),
+        Mesh3d(meshes.add(Plane3d::default().mesh().size(1000.0, 1000.0))),
+        MeshMaterial3d(materials.add(Color::srgb(0.3, 0.3, 0.3))),
+        Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
     commands.spawn((
-        SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("models/tank.glb"))),
-        Transform::from_xyz(0.0, 2.5, 0.0),
+        Transform::from_xyz(0.0, 1.0, 0.0),
         Player,
         Velocity::default(),
         Grounded(true),
