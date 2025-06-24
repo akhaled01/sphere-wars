@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-
-use shared::MazeGrid;
+use shared::{MazeGrid, SpawnPoint};
 
 #[derive(Component)]
 pub struct Collidable;
@@ -28,6 +27,7 @@ pub struct RemotePlayerDot {
 #[derive(Resource)]
 pub struct SharedMaze {
     pub grid: MazeGrid,
+    pub spawn_points: Vec<SpawnPoint>,
 }
 
 #[derive(Component)]

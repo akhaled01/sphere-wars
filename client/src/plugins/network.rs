@@ -2,7 +2,7 @@ use crate::{
     components::{
         network::{GameData, LocalPlayer, RemotePlayer},
         player::{Grounded, RotateOnLoad, Velocity},
-        projectile::Weapon,
+        projectile::{HitEffect, Weapon},
         world::SharedMaze,
     },
     network::NetworkClient,
@@ -38,6 +38,7 @@ impl Plugin for NetworkPlugin {
                     handle_network_messages,
                     sync_player_transforms,
                     sync_remote_players,
+                    cleanup_hit_effects,
                 ),
             );
     }
@@ -51,6 +52,9 @@ fn handle_network_messages(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    maze: Option<Res<SharedMaze>>,
+    mut player_transforms: Query<&mut Transform, (With<LocalPlayer>, Without<RemotePlayer>)>,
+    mut remote_transforms: Query<&mut Transform, (With<RemotePlayer>, Without<LocalPlayer>)>,
 ) {
     if let Some(message) = network.try_recv() {
         match message {
@@ -128,6 +132,7 @@ fn handle_network_messages(
                     let entity = commands
                         .spawn((
                             Mesh3d(meshes.add(Sphere::new(0.5))),
+                            MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
                             Transform::from_translation(position).with_rotation(player.rotation),
                             RemotePlayer {
                                 id: player.id.clone(),
@@ -154,13 +159,149 @@ fn handle_network_messages(
                 height,
                 difficulty,
             } => {
-                let maze_config = MazeConfig::new(seed, width, height, &difficulty);
-                let maze = generate_maze_from_config(&maze_config);
-                commands.insert_resource(SharedMaze { grid: maze });
+                let config = MazeConfig {
+                    seed,
+                    width,
+                    height,
+                    difficulty,
+                };
+                let maze_data = generate_maze_from_config(&config);
+                commands.insert_resource(SharedMaze {
+                    grid: maze_data.grid,
+                    spawn_points: maze_data.spawn_points,
+                });
             }
             ServerMessage::NameAlreadyTaken => {
                 error!("Name already taken");
                 std::process::exit(1);
+            }
+            ServerMessage::PlayerShot {
+                player_id,
+                origin,
+                direction,
+                hit_result,
+            } => {
+                // Spawn visual hit effect based on hit result
+                if hit_result.hit {
+                    if let Some(hit_pos) = hit_result.hit_position {
+                        spawn_shot_effect(
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            hit_pos,
+                            true,
+                        );
+                    }
+                } else {
+                    // Show miss effect at max range
+                    let miss_pos = origin + direction * hit_result.distance;
+                    spawn_shot_effect(&mut commands, &mut meshes, &mut materials, miss_pos, false);
+                }
+                println!("Player {} fired shot. Hit: {}", player_id, hit_result.hit);
+            }
+            ServerMessage::PlayerDamaged {
+                player_id,
+                damage,
+                health,
+                damage_by,
+            } => {
+                // Update player health
+                if let Some(player) = game_data.players.get_mut(&player_id) {
+                    player.health = health;
+                }
+                println!(
+                    "Player {} took {} damage from {}. Health: {}",
+                    player_id, damage, damage_by, health
+                );
+            }
+            ServerMessage::PlayerDied {
+                player_id,
+                killer_id,
+            } => {
+                // Update player state
+                if let Some(player) = game_data.players.get_mut(&player_id) {
+                    player.is_alive = false;
+                    player.health = 0.0;
+                    player.deaths += 1;
+                }
+
+                // Update killer stats
+                if let Some(killer_id) = killer_id {
+                    if let Some(killer) = game_data.players.get_mut(&killer_id) {
+                        killer.kills += 1;
+                    }
+                    println!("Player {} was killed by {}", player_id, killer_id);
+                } else {
+                    println!("Player {} died", player_id);
+                }
+            }
+            ServerMessage::PlayerRespawned {
+                player_id,
+                position,
+            } => {
+                // Store the final position and rotation for entity update
+                let mut final_position = position;
+                let mut final_rotation = Quat::IDENTITY;
+
+                // Calculate spawn index before mutable borrow
+                let spawn_index = if let Some(maze) = maze.as_ref() {
+                    if !maze.spawn_points.is_empty() {
+                        Some((player_id.len() + game_data.players.len()) % maze.spawn_points.len())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                // Update player state
+                if let Some(player) = game_data.players.get_mut(&player_id) {
+                    player.is_alive = true;
+                    player.health = player.max_health;
+
+                    // Use client-side spawn point selection if we have maze data
+                    if let Some(maze) = maze.as_ref() {
+                        // Select a spawn point from the maze
+                        let spawn_points = &maze.spawn_points;
+                        if !spawn_points.is_empty() {
+                            if let Some(index) = spawn_index {
+                                let spawn_point = &spawn_points[index];
+                                player.position = spawn_point.position;
+                                player.rotation = spawn_point.rotation;
+                                final_position = spawn_point.position;
+                                final_rotation = spawn_point.rotation;
+                            }
+                        } else {
+                            // Fallback to server position if no spawn points
+                            player.position = position;
+                            final_position = position;
+                        }
+                    } else {
+                        // Use server position if no maze data
+                        player.position = position;
+                        final_position = position;
+                    }
+                }
+
+                // Update entity position if it exists
+                if let Some(entity) = game_data.player_entities.get(&player_id) {
+                    // Check if it's the local player
+                    if let Some(local_player_entity) = local_player.entity {
+                        if *entity == local_player_entity {
+                            if let Ok(mut transform) = player_transforms.get_mut(*entity) {
+                                transform.translation = final_position;
+                                transform.rotation = final_rotation;
+                            }
+                        }
+                    }
+                    // Check if it's a remote player
+                    if let Ok(mut transform) = remote_transforms.get_mut(*entity) {
+                        transform.translation = final_position;
+                        transform.rotation = final_rotation;
+                    }
+                }
+
+                println!("Player {} respawned at {:?}", player_id, final_position);
             }
             _ => {}
         }
@@ -186,7 +327,7 @@ fn sync_remote_players(
     mut commands: Commands,
     mut query: Query<(Entity, &RemotePlayer, &mut Transform)>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mut existing_players: HashMap<String, Entity> = HashMap::new();
 
@@ -225,5 +366,51 @@ fn sync_remote_players(
             .id();
 
         game_data.player_entities.insert(id, entity);
+    }
+}
+
+fn spawn_shot_effect(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    position: Vec3,
+    hit: bool,
+) {
+    let color = if hit {
+        Color::srgb(1.0, 0.5, 0.0) // Orange for hits
+    } else {
+        Color::srgb(1.0, 1.0, 0.0) // Yellow for misses
+    };
+
+    // Spawn a small sphere as hit effect
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere::new(0.1))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: color,
+            emissive: LinearRgba::new(
+                color.to_linear().red,
+                color.to_linear().green,
+                color.to_linear().blue,
+                1.0,
+            ),
+            ..default()
+        })),
+        Transform::from_translation(position),
+        HitEffect {
+            timer: Timer::from_seconds(1.0, TimerMode::Once),
+        },
+    ));
+}
+
+fn cleanup_hit_effects(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut HitEffect)>,
+    time: Res<Time>,
+) {
+    for (entity, mut hit_effect) in query.iter_mut() {
+        hit_effect.timer.tick(time.delta());
+        if hit_effect.timer.finished() {
+            commands.entity(entity).despawn();
+        }
     }
 }

@@ -1,6 +1,7 @@
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
+use bevy::math::{Quat, Vec3};
 
 pub type MazeGrid = Vec<Vec<bool>>;
 
@@ -45,8 +46,17 @@ impl MazeNode {
 }
 
 // Proper maze generation algorithm based on the JavaScript implementation
-pub fn generate_maze_from_config(config: &MazeConfig) -> MazeGrid {
-    generate_maze_with_seed(config.width, config.height, &config.difficulty, config.seed)
+pub fn generate_maze_from_config(config: &MazeConfig) -> MazeData {
+    let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
+    let grid = generate_maze_with_seed(config.width, config.height, &config.difficulty, config.seed);
+    let spawn_points = generate_spawn_points(&grid, config.width, config.height, &mut rng);
+    
+    MazeData {
+        grid,
+        spawn_points,
+        width: config.width,
+        height: config.height,
+    }
 }
 
 pub fn generate_maze_with_seed(
@@ -379,4 +389,102 @@ fn nodes_to_simple_grid(nodes: &[MazeNode], width: usize, height: usize) -> Maze
     }
 
     grid
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnPoint {
+    pub position: Vec3,
+    pub rotation: Quat,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MazeData {
+    pub grid: MazeGrid,
+    pub spawn_points: Vec<SpawnPoint>,
+    pub width: usize,
+    pub height: usize,
+}
+
+fn generate_spawn_points(
+    grid: &MazeGrid,
+    width: usize,
+    height: usize,
+    rng: &mut impl Rng,
+) -> Vec<SpawnPoint> {
+    let mut spawn_points: Vec<SpawnPoint> = Vec::new();
+    let grid_width = width * 3 + 2;
+    let grid_height = height * 3 + 2;
+    let min_distance = 6.0; // Minimum distance between spawn points
+
+    // Find all valid passage cells
+    let mut candidates = Vec::new();
+    for y in 2..grid_height - 2 {
+        for x in 2..grid_width - 2 {
+            if !grid[y][x] && is_safe_spawn_location(grid, x, y) {
+                candidates.push((x, y));
+            }
+        }
+    }
+
+    // Select spawn points with good distribution
+    while !candidates.is_empty() && spawn_points.len() < 16 {
+        let idx = rng.random_range(0..candidates.len());
+        let (x, y) = candidates[idx];
+        
+        // Check if this location is far enough from existing spawn points
+        let mut valid = true;
+        for existing in &spawn_points {
+            let distance = ((x as f32 - existing.position.x).powi(2) + (y as f32 - existing.position.z).powi(2)).sqrt();
+            if distance < min_distance {
+                valid = false;
+                break;
+            }
+        }
+
+        if valid {
+            spawn_points.push(SpawnPoint {
+                position: Vec3::new(x as f32 * 4.0, 1.0, y as f32 * 4.0),
+                rotation: Quat::from_rotation_y(std::f32::consts::PI * rng.random_range(0.0..2.0)),
+            });
+            
+            // Remove nearby candidates to ensure distribution
+            candidates.retain(|(cx, cy)| {
+                let dist = ((x as f32 - *cx as f32).powi(2) + (y as f32 - *cy as f32).powi(2)).sqrt();
+                dist >= min_distance
+            });
+        } else {
+            candidates.remove(idx);
+        }
+    }
+
+    // Ensure we have at least a few spawn points
+    if spawn_points.len() < 4 {
+        for y in (2..grid_height - 2).step_by(6) {
+            for x in (2..grid_width - 2).step_by(6) {
+                if !grid[y][x] && spawn_points.len() < 8 {
+                    spawn_points.push(SpawnPoint {
+                        position: Vec3::new(x as f32 * 4.0, 1.0, y as f32 * 4.0),
+                        rotation: Quat::from_rotation_y(std::f32::consts::PI * rng.random_range(0.0..2.0)),
+                    });
+                }
+            }
+        }
+    }
+
+    spawn_points
+}
+
+fn is_safe_spawn_location(grid: &MazeGrid, x: usize, y: usize) -> bool {
+    // Check if there's enough open space around this position
+    let mut open_count = 0;
+    for dy in -1..=1 {
+        for dx in -1..=1 {
+            let nx = (x as i32 + dx) as usize;
+            let ny = (y as i32 + dy) as usize;
+            if nx < grid[0].len() && ny < grid.len() && !grid[ny][nx] {
+                open_count += 1;
+            }
+        }
+    }
+    open_count >= 5 // Need at least 5 open cells in 3x3 area
 }

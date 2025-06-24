@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -5,8 +7,6 @@ pub struct Projectile;
 
 #[derive(Component)]
 pub struct Weapon {
-    pub damage: f32,
-    pub range: f32,
     pub fire_rate: f32, // shots per second
     pub last_shot_time: f32,
 }
@@ -14,8 +14,6 @@ pub struct Weapon {
 impl Default for Weapon {
     fn default() -> Self {
         Self {
-            damage: 25.0,
-            range: 100.0,
             fire_rate: 4.0, // 2 shots per second
             last_shot_time: 0.0,
         }

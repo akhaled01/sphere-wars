@@ -18,7 +18,6 @@ impl Plugin for PlayerPlugin {
                 grab_mouse,
                 handle_collisions,
                 hitscan_shooting,
-                cleanup_hit_effects,
             ),
         );
     }
