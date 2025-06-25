@@ -1,6 +1,6 @@
-use std::net::{SocketAddr, UdpSocket};
-use shared::{ClientMessage, ServerMessage};
 use bevy::prelude::*;
+use shared::{ClientMessage, ServerMessage};
+use std::net::{SocketAddr, UdpSocket};
 
 #[derive(Resource)]
 pub struct NetworkClient {
@@ -16,7 +16,7 @@ impl NetworkClient {
         let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
         socket.set_nonblocking(true).unwrap();
         let server_addr: SocketAddr = format!("{}:{}", host, port).parse().unwrap();
-        
+
         Self {
             socket,
             server_addr,
@@ -28,7 +28,7 @@ impl NetworkClient {
         let join_msg = ClientMessage::JoinGame {
             player_name: self.player_name.clone(),
         };
-        
+
         if let Ok(msg) = serde_json::to_string(&join_msg) {
             let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
         }

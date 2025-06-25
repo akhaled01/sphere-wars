@@ -82,4 +82,7 @@ pub enum ServerMessage {
     },
     NameAlreadyTaken,
     HealthCheck,
+    GameEnded {
+        reason: String,
+    },
 }

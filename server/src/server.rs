@@ -2,11 +2,10 @@ use bevy::math::{Quat, Vec3};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::net::UdpSocket;
+use tokio::time;
 use uuid::Uuid;
 
-use shared::{
-    ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig,
-};
+use shared::{ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig};
 
 use crate::utils::log_info;
 
@@ -104,7 +103,6 @@ impl GameServer {
     fn can_start_game(&self) -> bool {
         self.players.len() >= self.min_players && matches!(self.state, GameState::WaitingForPlayers)
     }
-    
 
     // TestHealth makes sure server is running
     async fn handle_test_health(&mut self, addr: SocketAddr) {
@@ -137,7 +135,6 @@ impl GameServer {
             }
             return;
         }
-
 
         // check if name is taken
         if self.players.values().any(|p| p.name == player_name) {
@@ -340,5 +337,25 @@ impl GameServer {
                 }
             }
         }
+    }
+
+    pub async fn shutdown_gracefully(&self) {
+        println!(
+            "Sending shutdown notification to {} client{}...",
+            self.players.len(),
+            if self.players.len() == 1 { "" } else { "s" }
+        );
+
+        let shutdown_msg = ServerMessage::GameEnded {
+            reason: "Server is shutting down".to_string(),
+        };
+
+        if let Ok(response) = serde_json::to_string(&shutdown_msg) {
+            self.broadcast(&response).await;
+        }
+
+        // Give clients a moment to receive the message
+        time::sleep(time::Duration::from_millis(500)).await;
+        println!("Shutdown complete.");
     }
 }

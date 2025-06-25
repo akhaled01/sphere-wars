@@ -33,8 +33,10 @@ pub fn hitscan_shooting(
         weapon.last_shot_time = current_time;
 
         // Calculate ray from camera position in camera's forward direction
-        let ray_origin = camera_transform.translation;
-        let ray_direction = camera_transform.forward().as_vec3();
+        // The ray should start slightly forward from camera to avoid self-intersection
+        let camera_forward = camera_transform.forward().normalize();
+        let ray_origin = camera_transform.translation + camera_forward * 0.1; // Offset slightly forward
+        let ray_direction = camera_forward;
 
         // Send shoot message to server for authoritative hitscan
         network.send_shoot(ray_origin, ray_direction);

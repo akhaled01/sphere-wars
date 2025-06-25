@@ -66,7 +66,7 @@ fn handle_network_messages(
                         network.player_name().to_string(),
                     ));
                     // Spawn local player entity with sphere mesh
-                    let sphere = Mesh3d(meshes.add(Sphere::new(0.5)));
+                    let sphere = Mesh3d(meshes.add(Sphere::new(1.5)));
                     let sphere_material = MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2)));
 
                     let entity = commands
@@ -131,7 +131,7 @@ fn handle_network_messages(
 
                     let entity = commands
                         .spawn((
-                            Mesh3d(meshes.add(Sphere::new(0.5))),
+                            Mesh3d(meshes.add(Sphere::new(1.5))),
                             MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
                             Transform::from_translation(position).with_rotation(player.rotation),
                             RemotePlayer {
@@ -225,6 +225,11 @@ fn handle_network_messages(
                     player.deaths += 1;
                 }
 
+                // Despawn the player entity when they die
+                if let Some(entity) = game_data.player_entities.get(&player_id) {
+                    commands.entity(*entity).despawn();
+                }
+
                 // Update killer stats
                 if let Some(killer_id) = killer_id {
                     if let Some(killer) = game_data.players.get_mut(&killer_id) {
@@ -283,6 +288,47 @@ fn handle_network_messages(
                     }
                 }
 
+                // Recreate entity if it doesn't exist (was despawned on death)
+                if !game_data.player_entities.contains_key(&player_id) {
+                    // Check if this is the local player
+                    if Some(player_id.as_str()) == game_data.my_id.as_deref() {
+                        // Recreate local player entity
+                        let entity = commands
+                            .spawn((
+                                Mesh3d(meshes.add(Sphere::new(1.5))),
+                                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                                Transform::from_translation(final_position)
+                                    .with_rotation(final_rotation),
+                                LocalPlayer,
+                                Velocity::default(),
+                                Grounded(true),
+                                RotateOnLoad,
+                                Weapon::default(),
+                            ))
+                            .id();
+                        local_player.entity = Some(entity);
+                        game_data.player_entities.insert(player_id.clone(), entity);
+                    } else {
+                        // Recreate remote player entity
+                        let entity = commands
+                            .spawn((
+                                Mesh3d(meshes.add(Sphere::new(1.5))),
+                                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                                Transform::from_translation(final_position)
+                                    .with_rotation(final_rotation),
+                                RemotePlayer {
+                                    id: player_id.clone(),
+                                },
+                                Velocity::default(),
+                                Grounded(true),
+                                RotateOnLoad,
+                                Weapon::default(),
+                            ))
+                            .id();
+                        game_data.player_entities.insert(player_id.clone(), entity);
+                    }
+                }
+
                 // Update entity position if it exists
                 if let Some(entity) = game_data.player_entities.get(&player_id) {
                     // Check if it's the local player
@@ -302,6 +348,11 @@ fn handle_network_messages(
                 }
 
                 println!("Player {} respawned at {:?}", player_id, final_position);
+            }
+            ServerMessage::GameEnded { reason: _ } => {
+                println!("Server is shutting down");
+                println!("Game ended. Closing application...");
+                std::process::exit(0);
             }
             _ => {}
         }

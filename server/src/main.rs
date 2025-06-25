@@ -1,4 +1,5 @@
 use clap::Parser;
+use tokio::signal;
 
 mod cli;
 mod utils;
@@ -16,5 +17,14 @@ async fn main() {
     let listener_socket = create_udp_server_socket(&cli.host, cli.port).await;
     let mut listener = GameServer::new(listener_socket, cli.difficulty);
 
-    listener.listen_and_serve().await;
+    // Setup signal handling for graceful shutdown
+    tokio::select! {
+        _ = listener.listen_and_serve() => {
+            println!("Server stopped normally");
+        }
+        _ = signal::ctrl_c() => {
+            println!("Received shutdown signal, notifying clients...");
+            listener.shutdown_gracefully().await;
+        }
+    }
 }
