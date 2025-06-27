@@ -2,8 +2,9 @@ use bevy::math::{Quat, Vec3};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::net::UdpSocket;
-use tokio::time;
+use tokio::time::{Duration, Instant};
 use uuid::Uuid;
+use rand::Rng;
 
 use shared::{ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig};
 
@@ -19,6 +20,7 @@ pub struct GameServer {
     difficulty: String,
     game_start_time: Option<f64>,
     maze_seed: Option<u64>,
+    pending_respawns: HashMap<String, Instant>, // Track respawn timers
 }
 
 impl GameServer {
@@ -33,6 +35,7 @@ impl GameServer {
             difficulty,
             game_start_time: None,
             maze_seed: None,
+            pending_respawns: HashMap::new(),
         }
     }
 
@@ -304,6 +307,9 @@ impl GameServer {
                             if let Ok(response) = serde_json::to_string(&death_msg) {
                                 self.broadcast(&response).await;
                             }
+
+                            // Start respawn timer
+                            self.pending_respawns.insert(hit_player_id.clone(), Instant::now());
                         }
                     }
                 }
@@ -325,14 +331,40 @@ impl GameServer {
         if let Some(player_id) = self.addr_to_id.get(&addr) {
             if let Some(player) = self.players.get_mut(player_id) {
                 if !player.is_alive {
-                    player.respawn();
+                    // Check if respawn timer has expired
+                    if let Some(respawn_time) = self.pending_respawns.get(player_id) {
+                        if Instant::now().duration_since(*respawn_time) >= Duration::from_secs(3) {
+                            // Respawn player at random position
+                            let mut rng = rand::thread_rng();
+                            let x = rng.gen_range(10.0..90.0);
+                            let z = rng.gen_range(10.0..90.0);
+                            player.position = Vec3::new(x, 2.5, z);
+                            player.health = player.max_health;
+                            player.is_alive = true;
+                            player.death_time = None;
+                            player.last_damage_time = None;
+                            player.last_damage_by = None;
 
-                    let respawn_msg = ServerMessage::PlayerRespawned {
-                        player_id: player_id.clone(),
-                        position: player.position,
-                    };
-                    if let Ok(response) = serde_json::to_string(&respawn_msg) {
-                        self.broadcast(&response).await;
+                            let respawn_msg = ServerMessage::PlayerRespawned {
+                                player_id: player_id.clone(),
+                                position: player.position,
+                            };
+                            if let Ok(response) = serde_json::to_string(&respawn_msg) {
+                                self.broadcast(&response).await;
+                            }
+
+                            // Remove respawn timer
+                            self.pending_respawns.remove(player_id);
+                        } else {
+                            // Send error message if respawn timer has not expired
+                            let remaining_time = Duration::from_secs(3) - Instant::now().duration_since(*respawn_time);
+                            let error_msg = ServerMessage::Error {
+                                message: format!("Respawn in {:.1} seconds", remaining_time.as_secs_f32()),
+                            };
+                            if let Ok(response) = serde_json::to_string(&error_msg) {
+                                self.send_message(addr, &response).await;
+                            }
+                        }
                     }
                 }
             }
@@ -355,7 +387,7 @@ impl GameServer {
         }
 
         // Give clients a moment to receive the message
-        time::sleep(time::Duration::from_millis(500)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         println!("Shutdown complete.");
     }
 }
