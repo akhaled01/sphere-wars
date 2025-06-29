@@ -24,7 +24,7 @@ impl Player {
         Self {
             id,
             name,
-            position: Vec3::new(96.0, 2.5, 96.0), // Default spawn position
+            position: Vec3::new(48.0, 2.5, 48.0), // Default center position (server will assign proper spawn)
             rotation: Quat::IDENTITY,
             health: 100.0,
             max_health: 100.0,

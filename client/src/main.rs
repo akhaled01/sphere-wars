@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use network::NetworkClient;
 use plugins::{NetworkPlugin, PlayerPlugin, WorldPlugin};
 use systems::utils::{
-    get_init_plugins, handle_shutdown_signal, setup_signal_handlers, test_server_connection,
+    get_init_plugins, handle_app_exit, handle_shutdown_signal, setup_signal_handlers, test_server_connection,
 };
 
 mod cli;
@@ -31,6 +31,6 @@ fn main() {
     App::new()
         .add_plugins((get_init_plugins(), WorldPlugin, PlayerPlugin, NetworkPlugin))
         .insert_resource(network)
-        .add_systems(Update, handle_shutdown_signal)
+        .add_systems(Update, (handle_shutdown_signal, handle_app_exit))
         .run();
 }

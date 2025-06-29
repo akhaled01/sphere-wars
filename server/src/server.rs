@@ -6,7 +6,7 @@ use tokio::net::UdpSocket;
 use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
-use shared::{ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig};
+use shared::{ClientMessage, GameState, HitscanResult, MazeConfig, MazeData, Player, ServerMessage, SpawnPoint, WeaponConfig, generate_maze_from_config};
 
 use crate::utils::log_info;
 
@@ -20,6 +20,8 @@ pub struct GameServer {
     difficulty: String,
     game_start_time: Option<f64>,
     maze_seed: Option<u64>,
+    maze_data: Option<MazeData>, // Store generated maze data with spawn points
+    used_spawn_points: Vec<usize>, // Track which spawn points are in use
     pending_respawns: HashMap<String, Instant>, // Track respawn timers
 }
 
@@ -35,6 +37,8 @@ impl GameServer {
             difficulty,
             game_start_time: None,
             maze_seed: None,
+            maze_data: None,
+            used_spawn_points: Vec::new(),
             pending_respawns: HashMap::new(),
         }
     }
@@ -107,6 +111,36 @@ impl GameServer {
         self.players.len() >= self.min_players && matches!(self.state, GameState::WaitingForPlayers)
     }
 
+    // Get a random available spawn point
+    fn get_random_spawn_point(&mut self) -> Option<SpawnPoint> {
+        if let Some(maze_data) = &self.maze_data {
+            let available_points: Vec<usize> = (0..maze_data.spawn_points.len())
+                .filter(|i| !self.used_spawn_points.contains(i))
+                .collect();
+            
+            if !available_points.is_empty() {
+                let mut rng = rand::thread_rng();
+                let selected_idx = available_points[rng.gen_range(0..available_points.len())];
+                self.used_spawn_points.push(selected_idx);
+                return Some(maze_data.spawn_points[selected_idx].clone());
+            }
+        }
+        None
+    }
+
+    // Release a spawn point when player leaves
+    fn release_spawn_point(&mut self, position: Vec3) {
+        if let Some(maze_data) = &self.maze_data {
+            for (idx, spawn_point) in maze_data.spawn_points.iter().enumerate() {
+                let distance = spawn_point.position.distance(position);
+                if distance < 2.0 { // Close enough to be the same spawn point
+                    self.used_spawn_points.retain(|&x| x != idx);
+                    break;
+                }
+            }
+        }
+    }
+
     // TestHealth makes sure server is running
     async fn handle_test_health(&mut self, addr: SocketAddr) {
         let health_msg = ServerMessage::HealthCheck;
@@ -159,6 +193,26 @@ impl GameServer {
             rng.gen_range(0.3..1.0), // Green component
             rng.gen_range(0.3..1.0), // Blue component
         ];
+
+        // Generate maze data if not already generated
+        if self.maze_data.is_none() {
+            if self.maze_seed.is_none() {
+                self.maze_seed = Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs() as u64,
+                );
+            }
+            let config = MazeConfig::new(self.maze_seed.unwrap(), 12, 12, &self.difficulty);
+            self.maze_data = Some(generate_maze_from_config(&config));
+        }
+
+        // Assign random spawn point to player
+        if let Some(spawn_point) = self.get_random_spawn_point() {
+            player.position = spawn_point.position;
+            player.rotation = spawn_point.rotation;
+        }
 
         // Add player
         self.players.insert(player_id.clone(), player.clone());
@@ -215,11 +269,6 @@ impl GameServer {
                     .as_secs_f64(),
             );
 
-            // Generate fixed seed
-            if self.maze_seed.is_none() {
-                self.maze_seed = Some(self.game_start_time.unwrap() as u64);
-            }
-
             let start_msg = ServerMessage::GameStarted {
                 seed: self.maze_seed.unwrap(),
                 width: 12,
@@ -235,6 +284,9 @@ impl GameServer {
     async fn handle_leave_game(&mut self, addr: SocketAddr) {
         if let Some(player_id) = self.addr_to_id.remove(&addr) {
             if let Some(player) = self.players.remove(&player_id) {
+                // Release the spawn point for reuse
+                self.release_spawn_point(player.position);
+                
                 let left_msg = ServerMessage::PlayerLeft {
                     player_id: player.id,
                 };
@@ -337,35 +389,57 @@ impl GameServer {
     }
 
     async fn handle_respawn(&mut self, addr: SocketAddr) {
-        if let Some(player_id) = self.addr_to_id.get(&addr) {
-            if let Some(player) = self.players.get_mut(player_id) {
+        if let Some(player_id) = self.addr_to_id.get(&addr).cloned() {
+            // Check if player is dead and respawn timer has expired first
+            let should_respawn = if let Some(player) = self.players.get(&player_id) {
                 if !player.is_alive {
-                    // Check if respawn timer has expired
-                    if let Some(respawn_time) = self.pending_respawns.get(player_id) {
-                        if Instant::now().duration_since(*respawn_time) >= Duration::from_secs(3) {
-                            // Respawn player at random position
-                            let mut rng = rand::thread_rng();
-                            let x = rng.gen_range(10.0..90.0);
-                            let z = rng.gen_range(10.0..90.0);
-                            player.position = Vec3::new(x, 2.5, z);
-                            player.health = player.max_health;
-                            player.is_alive = true;
-                            player.death_time = None;
-                            player.last_damage_time = None;
-                            player.last_damage_by = None;
+                    if let Some(respawn_time) = self.pending_respawns.get(&player_id) {
+                        Instant::now().duration_since(*respawn_time) >= Duration::from_secs(3)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
 
-                            let respawn_msg = ServerMessage::PlayerRespawned {
-                                player_id: player_id.clone(),
-                                position: player.position,
-                            };
-                            if let Ok(response) = serde_json::to_string(&respawn_msg) {
-                                self.broadcast(&response).await;
-                            }
+            if should_respawn {
+                // Get spawn point before getting mutable reference to player
+                let spawn_point = self.get_random_spawn_point();
+                
+                if let Some(player) = self.players.get_mut(&player_id) {
+                    // Respawn player at random maze spawn point
+                    if let Some(spawn_point) = spawn_point {
+                        player.position = spawn_point.position;
+                        player.rotation = spawn_point.rotation;
+                    } else {
+                        // Fallback to default spawn if no spawn points available
+                        player.position = Vec3::new(48.0, 2.5, 48.0);
+                    }
+                    player.health = player.max_health;
+                    player.is_alive = true;
+                    player.death_time = None;
+                    player.last_damage_time = None;
+                    player.last_damage_by = None;
 
-                            // Remove respawn timer
-                            self.pending_respawns.remove(player_id);
-                        } else {
-                            // Send error message if respawn timer has not expired
+                    let respawn_msg = ServerMessage::PlayerRespawned {
+                        player_id: player_id.clone(),
+                        position: player.position,
+                    };
+                    if let Ok(response) = serde_json::to_string(&respawn_msg) {
+                        self.broadcast(&response).await;
+                    }
+
+                    // Remove respawn timer
+                    self.pending_respawns.remove(&player_id);
+                }
+            } else {
+                // Check if we should send error message for respawn timer
+                if let Some(player) = self.players.get(&player_id) {
+                    if !player.is_alive {
+                        if let Some(respawn_time) = self.pending_respawns.get(&player_id) {
                             let remaining_time = Duration::from_secs(3)
                                 - Instant::now().duration_since(*respawn_time);
                             let error_msg = ServerMessage::Error {
