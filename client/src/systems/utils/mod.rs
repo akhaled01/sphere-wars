@@ -7,6 +7,8 @@ use bevy::{
 use std::net::SocketAddr;
 use std::time::Duration;
 
+pub mod shutdown;
+
 pub fn get_init_plugins() -> impl PluginGroup {
     DefaultPlugins
         .set(WindowPlugin {
@@ -27,7 +29,7 @@ pub fn get_init_plugins() -> impl PluginGroup {
             ..default()
         })
         .add(FrameTimeDiagnosticsPlugin::default())
-        // .add(LogDiagnosticsPlugin::default())
+    // .add(LogDiagnosticsPlugin::default())
 }
 
 pub fn test_server_connection(host: &str, port: u16) -> bool {
@@ -97,3 +99,5 @@ pub fn test_server_connection(host: &str, port: u16) -> bool {
         }
     }
 }
+
+pub use shutdown::*;

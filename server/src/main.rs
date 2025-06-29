@@ -2,8 +2,8 @@ use clap::Parser;
 use tokio::signal;
 
 mod cli;
-mod utils;
 mod server;
+mod utils;
 
 use cli::Cli;
 use server::GameServer;

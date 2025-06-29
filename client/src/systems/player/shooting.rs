@@ -1,10 +1,10 @@
-use bevy::prelude::*;
+use crate::NetworkClient;
 use crate::components::{
     player::{FollowCamera, Player},
     projectile::Weapon,
 };
-use crate::NetworkClient;
 use crate::systems::ui::death_screen::DeathState;
+use bevy::prelude::*;
 
 pub fn hitscan_shooting(
     mouse_input: Res<ButtonInput<MouseButton>>,
@@ -31,12 +31,12 @@ pub fn hitscan_shooting(
 
     for mut weapon in player_q.iter_mut() {
         let current_time = time.elapsed_secs();
-        
+
         // Check fire rate
         if current_time - weapon.last_shot_time < 1.0 / weapon.fire_rate {
             continue;
         }
-        
+
         weapon.last_shot_time = current_time;
 
         // Calculate ray from camera position in camera's forward direction
@@ -47,6 +47,9 @@ pub fn hitscan_shooting(
 
         // Send shoot message to server for authoritative hitscan
         network.send_shoot(ray_origin, ray_direction);
-        println!("Shot fired! Origin: {:?}, Direction: {:?}", ray_origin, ray_direction);
+        println!(
+            "Shot fired! Origin: {:?}, Direction: {:?}",
+            ray_origin, ray_direction
+        );
     }
 }

@@ -1,7 +1,7 @@
+use bevy::math::{Quat, Vec3};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
-use bevy::math::{Quat, Vec3};
 
 pub type MazeGrid = Vec<Vec<bool>>;
 
@@ -48,9 +48,10 @@ impl MazeNode {
 // Proper maze generation algorithm based on the JavaScript implementation
 pub fn generate_maze_from_config(config: &MazeConfig) -> MazeData {
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
-    let grid = generate_maze_with_seed(config.width, config.height, &config.difficulty, config.seed);
+    let grid =
+        generate_maze_with_seed(config.width, config.height, &config.difficulty, config.seed);
     let spawn_points = generate_spawn_points(&grid, config.width, config.height, &mut rng);
-    
+
     MazeData {
         grid,
         spawn_points,
@@ -430,11 +431,13 @@ fn generate_spawn_points(
     while !candidates.is_empty() && spawn_points.len() < 16 {
         let idx = rng.random_range(0..candidates.len());
         let (x, y) = candidates[idx];
-        
+
         // Check if this location is far enough from existing spawn points
         let mut valid = true;
         for existing in &spawn_points {
-            let distance = ((x as f32 - existing.position.x).powi(2) + (y as f32 - existing.position.z).powi(2)).sqrt();
+            let distance = ((x as f32 - existing.position.x).powi(2)
+                + (y as f32 - existing.position.z).powi(2))
+            .sqrt();
             if distance < min_distance {
                 valid = false;
                 break;
@@ -446,10 +449,11 @@ fn generate_spawn_points(
                 position: Vec3::new(x as f32 * 4.0, 1.0, y as f32 * 4.0),
                 rotation: Quat::from_rotation_y(std::f32::consts::PI * rng.random_range(0.0..2.0)),
             });
-            
+
             // Remove nearby candidates to ensure distribution
             candidates.retain(|(cx, cy)| {
-                let dist = ((x as f32 - *cx as f32).powi(2) + (y as f32 - *cy as f32).powi(2)).sqrt();
+                let dist =
+                    ((x as f32 - *cx as f32).powi(2) + (y as f32 - *cy as f32).powi(2)).sqrt();
                 dist >= min_distance
             });
         } else {
@@ -464,7 +468,9 @@ fn generate_spawn_points(
                 if !grid[y][x] && spawn_points.len() < 8 {
                     spawn_points.push(SpawnPoint {
                         position: Vec3::new(x as f32 * 4.0, 1.0, y as f32 * 4.0),
-                        rotation: Quat::from_rotation_y(std::f32::consts::PI * rng.random_range(0.0..2.0)),
+                        rotation: Quat::from_rotation_y(
+                            std::f32::consts::PI * rng.random_range(0.0..2.0),
+                        ),
                     });
                 }
             }

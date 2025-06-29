@@ -1,10 +1,10 @@
 use bevy::math::{Quat, Vec3};
+use rand::Rng;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 use tokio::time::{Duration, Instant};
 use uuid::Uuid;
-use rand::Rng;
 
 use shared::{ClientMessage, GameState, HitscanResult, Player, ServerMessage, WeaponConfig};
 
@@ -148,9 +148,17 @@ impl GameServer {
             return;
         }
 
-        // Create new player
+        // Create new player with random color
         let player_id = Uuid::new_v4().to_string();
-        let player = Player::new(player_id.clone(), player_name);
+        let mut player = Player::new(player_id.clone(), player_name);
+
+        // Generate random bright color
+        let mut rng = rand::thread_rng();
+        player.color = [
+            rng.gen_range(0.3..1.0), // Red component (avoid too dark)
+            rng.gen_range(0.3..1.0), // Green component
+            rng.gen_range(0.3..1.0), // Blue component
+        ];
 
         // Add player
         self.players.insert(player_id.clone(), player.clone());
@@ -309,7 +317,8 @@ impl GameServer {
                             }
 
                             // Start respawn timer
-                            self.pending_respawns.insert(hit_player_id.clone(), Instant::now());
+                            self.pending_respawns
+                                .insert(hit_player_id.clone(), Instant::now());
                         }
                     }
                 }
@@ -357,9 +366,13 @@ impl GameServer {
                             self.pending_respawns.remove(player_id);
                         } else {
                             // Send error message if respawn timer has not expired
-                            let remaining_time = Duration::from_secs(3) - Instant::now().duration_since(*respawn_time);
+                            let remaining_time = Duration::from_secs(3)
+                                - Instant::now().duration_since(*respawn_time);
                             let error_msg = ServerMessage::Error {
-                                message: format!("Respawn in {:.1} seconds", remaining_time.as_secs_f32()),
+                                message: format!(
+                                    "Respawn in {:.1} seconds",
+                                    remaining_time.as_secs_f32()
+                                ),
                             };
                             if let Ok(response) = serde_json::to_string(&error_msg) {
                                 self.send_message(addr, &response).await;

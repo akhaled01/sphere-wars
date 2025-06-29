@@ -1,5 +1,7 @@
-use crate::components::world::{Minimap, MinimapInitialized, MinimapPixel, PlayerDot, RemotePlayerDot, SharedMaze};
 use crate::components::network::{GameData, RemotePlayer};
+use crate::components::world::{
+    Minimap, MinimapInitialized, MinimapPixel, PlayerDot, RemotePlayerDot, SharedMaze,
+};
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -75,7 +77,7 @@ pub fn update_minimap(
             }
         }
 
-        // Add initial player dot
+        // Add initial player dot (will be updated with proper color later)
         if let Ok(player_transform) = player_query.single() {
             let player_pos = player_transform.translation;
 
@@ -85,7 +87,7 @@ pub fn update_minimap(
             let maze_height = maze.len() as f32 * TILE_SIZE;
             let maze_offset_x = -maze_width / 2.0;
             let maze_offset_z = -maze_height / 2.0;
-            
+
             let minimap_x = ((player_pos.x - maze_offset_x) / TILE_SIZE) * pixel_size;
             let minimap_z = ((player_pos.z - maze_offset_z) / TILE_SIZE) * pixel_size;
 
@@ -104,7 +106,7 @@ pub fn update_minimap(
                         border: UiRect::all(Val::Px(1.0)),
                         ..default()
                     },
-                    BackgroundColor(Color::srgb(1.0, 0.0, 0.0)), // Bright red for player
+                    BackgroundColor(Color::srgb(1.0, 0.0, 0.0)), // Default red, will be updated
                     BorderColor(Color::WHITE),
                     PlayerDot,
                 ));
@@ -119,7 +121,7 @@ pub fn update_minimap(
 pub fn update_player_position_on_minimap(
     mut dots: ParamSet<(
         Query<&mut Node, With<PlayerDot>>,
-        Query<(&mut Node, &RemotePlayerDot)>
+        Query<(&mut Node, &RemotePlayerDot)>,
     )>,
     player_query: Query<&Transform, (With<Camera>, Without<PlayerDot>)>,
     remote_query: Query<(&Transform, &RemotePlayer)>,
@@ -138,29 +140,29 @@ pub fn update_player_position_on_minimap(
     minimap_timer.last_update = current_time;
     if let Ok(player_transform) = player_query.single() {
         if let Ok(mut player_dot_node) = dots.p0().single_mut() {
-        let player_pos = player_transform.translation;
+            let player_pos = player_transform.translation;
 
-        // Convert 3D world coordinates to minimap coordinates
-        let maze = &shared_maze.grid;
-        let maze_width = maze[0].len() as f32;
-        let maze_height = maze.len() as f32;
-        let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
-        
-        // Convert world position to maze grid coordinates
-        let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
-        let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
-        
-        // Convert grid coordinates to minimap pixels
-        let minimap_x = grid_x * pixel_size;
-        let minimap_z = grid_z * pixel_size;
+            // Convert 3D world coordinates to minimap coordinates
+            let maze = &shared_maze.grid;
+            let maze_width = maze[0].len() as f32;
+            let maze_height = maze.len() as f32;
+            let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
 
-        // Clamp to minimap bounds
-        let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
-        let minimap_z = minimap_z.clamp(0.0, MINIMAP_SIZE - 8.0);
+            // Convert world position to maze grid coordinates
+            let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
+            let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
 
-        // Update player dot position
-        player_dot_node.left = Val::Px(minimap_x);
-        player_dot_node.top = Val::Px(minimap_z);
+            // Convert grid coordinates to minimap pixels
+            let minimap_x = grid_x * pixel_size;
+            let minimap_z = grid_z * pixel_size;
+
+            // Clamp to minimap bounds
+            let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
+            let minimap_z = minimap_z.clamp(0.0, MINIMAP_SIZE - 8.0);
+
+            // Update player dot position
+            player_dot_node.left = Val::Px(minimap_x);
+            player_dot_node.top = Val::Px(minimap_z);
         }
     }
 
@@ -174,17 +176,17 @@ pub fn update_player_position_on_minimap(
     if let Ok(minimap_entity) = minimap_query.single() {
         for (transform, remote_player) in remote_query.iter() {
             let player_pos = transform.translation;
-            
+
             // Convert world coordinates to minimap coordinates
             let maze = &shared_maze.grid;
             let maze_width = maze[0].len() as f32;
             let maze_height = maze.len() as f32;
             let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
-            
+
             // Convert world position to maze grid coordinates
             let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
             let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
-            
+
             // Convert grid coordinates to minimap pixels
             let minimap_x = grid_x * pixel_size;
             let minimap_z = grid_z * pixel_size;
@@ -194,6 +196,13 @@ pub fn update_player_position_on_minimap(
             let minimap_z = minimap_z.clamp(0.0, MINIMAP_SIZE - 8.0);
 
             if !existing_dots.contains_key(&remote_player.id) {
+                // Get player color from game_data
+                let player_color = if let Some(player) = game_data.players.get(&remote_player.id) {
+                    Color::srgb(player.color[0], player.color[1], player.color[2])
+                } else {
+                    Color::srgb(0.0, 0.0, 1.0) // Fallback blue
+                };
+
                 // Create new remote player dot
                 commands.entity(minimap_entity).with_children(|parent| {
                     parent.spawn((
@@ -206,7 +215,7 @@ pub fn update_player_position_on_minimap(
                             border: UiRect::all(Val::Px(1.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.0, 0.0, 1.0)), // Blue for remote players
+                        BackgroundColor(player_color),
                         BorderColor(Color::WHITE),
                         RemotePlayerDot {
                             player_id: remote_player.id.clone(),
@@ -229,6 +238,35 @@ pub fn update_player_position_on_minimap(
         for (entity, (_, dot)) in dots.p1().iter().enumerate() {
             if !game_data.players.contains_key(&dot.player_id) {
                 commands.entity(Entity::from_raw(entity as u32)).despawn();
+            }
+        }
+    }
+}
+
+// System to update player dot colors based on server-assigned colors
+pub fn update_player_dot_colors(
+    mut player_dot_query: Query<&mut BackgroundColor, With<PlayerDot>>,
+    mut remote_dot_query: Query<(&mut BackgroundColor, &RemotePlayerDot), Without<PlayerDot>>,
+    game_data: Res<GameData>,
+) {
+    // Update local player dot color
+    if let Some(my_id) = &game_data.my_id {
+        if let Some(player) = game_data.players.get(my_id) {
+            if let Ok(mut bg_color) = player_dot_query.single_mut() {
+                let new_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
+                if bg_color.0 != new_color {
+                    bg_color.0 = new_color;
+                }
+            }
+        }
+    }
+
+    // Update remote player dot colors
+    for (mut bg_color, remote_dot) in remote_dot_query.iter_mut() {
+        if let Some(player) = game_data.players.get(&remote_dot.player_id) {
+            let new_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
+            if bg_color.0 != new_color {
+                bg_color.0 = new_color;
             }
         }
     }

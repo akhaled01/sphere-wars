@@ -1,8 +1,8 @@
-use crate::components::world::{Collidable, SharedMaze};
-use bevy::prelude::*;
-use bevy::math::Vec3;
-use crate::components::player::Player;
 use super::lights::setup_maze_lighting;
+use crate::components::player::Player;
+use crate::components::world::{Collidable, SharedMaze};
+use bevy::math::Vec3;
+use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct MazeWall;
@@ -59,7 +59,7 @@ pub fn setup_maze(
     let maze_offset_z = -maze_height / 2.0; // Center maze vertically
 
     setup_maze_lighting(&mut commands);
-    
+
     // Spawn floor tiles and walls in a single pass
     for (y, row) in maze_data.grid.iter().enumerate() {
         for (x, &is_wall) in row.iter().enumerate() {

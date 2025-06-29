@@ -7,8 +7,7 @@ pub fn setup_world_lighting(commands: &mut Commands) {
             illuminance: 10000.0,
             ..default()
         },
-        Transform::from_xyz(50.0, 30.0, 50.0)
-            .looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(50.0, 30.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 

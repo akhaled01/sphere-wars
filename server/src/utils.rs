@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use tokio::net::UdpSocket;
 use crate::cli;
+use tokio::net::UdpSocket;
 
 pub fn print_info(args: &cli::Cli) {
     println!("Tank wars server");
@@ -16,7 +16,6 @@ pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
     let socket = UdpSocket::bind(addr).await.unwrap();
     socket
 }
-
 
 const GREEN: &str = "\x1b[32m";
 const YELLOW: &str = "\x1b[33m";

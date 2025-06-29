@@ -27,9 +27,7 @@ pub struct Health {
 
 impl Default for Health {
     fn default() -> Self {
-        Self {
-            current: 100.0,
-        }
+        Self { current: 100.0 }
     }
 }
 

@@ -1,6 +1,6 @@
-use bevy::prelude::*;
 use crate::components::network::GameData;
 use crate::network::NetworkClient;
+use bevy::prelude::*;
 
 #[derive(Resource, Default)]
 pub struct DeathState {
@@ -28,7 +28,7 @@ pub fn setup_death_screen(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)), // Dark overlay
-            Visibility::Hidden, // Start hidden
+            Visibility::Hidden,                                // Start hidden
             DeathScreenUI,
         ))
         .with_children(|parent| {
@@ -42,7 +42,7 @@ pub fn setup_death_screen(mut commands: Commands) {
                 TextColor(Color::srgb(1.0, 0.2, 0.2)), // Red text
                 DeathText,
             ));
-            
+
             // Instructions text
             parent.spawn((
                 Text::new("Press R to respawn"),
@@ -73,10 +73,7 @@ pub fn handle_death_screen(
     }
 }
 
-pub fn update_death_state(
-    game_data: Res<GameData>,
-    mut death_state: ResMut<DeathState>,
-) {
+pub fn update_death_state(game_data: Res<GameData>, mut death_state: ResMut<DeathState>) {
     // Update death state based on local player status
     if let Some(my_id) = &game_data.my_id {
         if let Some(my_player) = game_data.players.get(my_id) {

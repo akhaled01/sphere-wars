@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use bevy::math::{Vec3, Quat};
 use crate::player::Player;
 use crate::{GameState, HitscanResult};
+use bevy::math::{Quat, Vec3};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 // client to server messages
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -61,13 +61,20 @@ fn handle_network_messages(
             ServerMessage::GameJoined { player_id } => {
                 game_data.my_id = Some(player_id.clone());
                 if local_player.player.is_none() {
+                    // Get player data from game_data to access server-assigned color
+                    let player_color = if let Some(player) = game_data.players.get(&player_id) {
+                        Color::srgb(player.color[0], player.color[1], player.color[2])
+                    } else {
+                        Color::srgb(0.8, 0.2, 0.2) // Fallback color
+                    };
+
                     local_player.player = Some(Player::new(
                         player_id.clone(),
                         network.player_name().to_string(),
                     ));
                     // Spawn local player entity with sphere mesh
                     let sphere = Mesh3d(meshes.add(Sphere::new(1.5)));
-                    let sphere_material = MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2)));
+                    let sphere_material = MeshMaterial3d(materials.add(player_color));
 
                     let entity = commands
                         .spawn((
@@ -129,10 +136,12 @@ fn handle_network_messages(
                     let mut position = player.position;
                     position.y = 1.0; // Set tank height to be on ground
 
+                    let player_color =
+                        Color::srgb(player.color[0], player.color[1], player.color[2]);
                     let entity = commands
                         .spawn((
                             Mesh3d(meshes.add(Sphere::new(1.5))),
-                            MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                            MeshMaterial3d(materials.add(player_color)),
                             Transform::from_translation(position).with_rotation(player.rotation),
                             RemotePlayer {
                                 id: player.id.clone(),
@@ -225,14 +234,15 @@ fn handle_network_messages(
                     player.deaths += 1;
                 }
 
-                // Only despawn remote players, keep local player entity alive for death screen
-                if Some(&player_id) != game_data.my_id.as_ref() {
-                    if let Some(entity) = game_data.player_entities.get(&player_id) {
-                        commands.entity(*entity).despawn();
-                    }
-                } else {
-                    // For local player, scale to zero to hide but keep entity alive for camera and UI
-                    if let Some(entity) = game_data.player_entities.get(&player_id) {
+                // Hide dead players by scaling to zero instead of despawning
+                if let Some(entity) = game_data.player_entities.get(&player_id) {
+                    // For remote players, use remote_transforms query
+                    if Some(&player_id) != game_data.my_id.as_ref() {
+                        if let Ok(mut transform) = remote_transforms.get_mut(*entity) {
+                            transform.scale = Vec3::ZERO;
+                        }
+                    } else {
+                        // For local player, use player_transforms query
                         if let Ok(mut transform) = player_transforms.get_mut(*entity) {
                             transform.scale = Vec3::ZERO;
                         }
@@ -302,10 +312,20 @@ fn handle_network_messages(
                     // Check if this is the local player
                     if Some(player_id.as_str()) == game_data.my_id.as_deref() {
                         // Recreate local player entity
+                        let player_color =
+                            if let Some(player_data) = game_data.players.get(&player_id) {
+                                Color::srgb(
+                                    player_data.color[0],
+                                    player_data.color[1],
+                                    player_data.color[2],
+                                )
+                            } else {
+                                Color::srgb(0.8, 0.2, 0.2) // Fallback red
+                            };
                         let entity = commands
                             .spawn((
                                 Mesh3d(meshes.add(Sphere::new(1.5))),
-                                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                                MeshMaterial3d(materials.add(player_color)),
                                 Transform::from_translation(final_position)
                                     .with_rotation(final_rotation),
                                 LocalPlayer,
@@ -319,10 +339,20 @@ fn handle_network_messages(
                         game_data.player_entities.insert(player_id.clone(), entity);
                     } else {
                         // Recreate remote player entity
+                        let player_color =
+                            if let Some(player_data) = game_data.players.get(&player_id) {
+                                Color::srgb(
+                                    player_data.color[0],
+                                    player_data.color[1],
+                                    player_data.color[2],
+                                )
+                            } else {
+                                Color::srgb(0.2, 0.2, 0.8) // Fallback blue
+                            };
                         let entity = commands
                             .spawn((
                                 Mesh3d(meshes.add(Sphere::new(1.5))),
-                                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                                MeshMaterial3d(materials.add(player_color)),
                                 Transform::from_translation(final_position)
                                     .with_rotation(final_rotation),
                                 RemotePlayer {
@@ -354,6 +384,7 @@ fn handle_network_messages(
                     if let Ok(mut transform) = remote_transforms.get_mut(*entity) {
                         transform.translation = final_position;
                         transform.rotation = final_rotation;
+                        transform.scale = Vec3::ONE; // Restore normal scale on respawn
                     }
                 }
 
@@ -408,15 +439,16 @@ fn sync_remote_players(
         .filter(|(id, _)| {
             !existing_players.contains_key(*id) && Some(id.as_str()) != game_data.my_id.as_deref()
         })
-        .map(|(id, player)| (id.clone(), player.position, player.rotation))
+        .map(|(id, player)| (id.clone(), player.position, player.rotation, player.color))
         .collect();
 
     // Spawn new remote players
-    for (id, position, rotation) in players_to_spawn {
+    for (id, position, rotation, color) in players_to_spawn {
+        let player_color = Color::srgb(color[0], color[1], color[2]);
         let entity = commands
             .spawn((
                 Mesh3d(meshes.add(Sphere::new(1.5))),
-                MeshMaterial3d(materials.add(Color::srgb(0.8, 0.2, 0.2))),
+                MeshMaterial3d(materials.add(player_color)),
                 Transform::from_translation(position).with_rotation(rotation),
                 RemotePlayer { id: id.clone() },
                 Velocity::default(),

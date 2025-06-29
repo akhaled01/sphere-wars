@@ -1,4 +1,4 @@
-use bevy::math::{Vec3, Quat};
+use bevy::math::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,6 +16,7 @@ pub struct Player {
     pub death_time: Option<f64>,
     pub last_damage_time: Option<f64>,
     pub last_damage_by: Option<u32>,
+    pub color: [f32; 3], // RGB color values (0.0 to 1.0)
 }
 
 impl Player {
@@ -34,6 +35,7 @@ impl Player {
             death_time: None,
             last_damage_time: None,
             last_damage_by: None,
+            color: [1.0, 1.0, 1.0], // Default white color
         }
     }
 
@@ -50,7 +52,7 @@ impl Player {
         if !self.is_alive {
             return false;
         }
-        
+
         self.health -= damage;
         if self.health <= 0.0 {
             self.health = 0.0;
@@ -61,5 +63,3 @@ impl Player {
         false
     }
 }
-
-
