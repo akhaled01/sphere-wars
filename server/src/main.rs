@@ -12,6 +12,13 @@ use utils::{create_udp_server_socket, print_info};
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+
+    // Validate CLI arguments
+    if let Err(error) = cli.validate() {
+        eprintln!("Error: {}", error);
+        std::process::exit(1);
+    }
+
     print_info(&cli);
 
     let listener_socket = create_udp_server_socket(&cli.host, cli.port).await;

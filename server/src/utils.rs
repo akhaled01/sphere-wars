@@ -4,11 +4,20 @@ use crate::cli;
 use tokio::net::UdpSocket;
 
 pub fn print_info(args: &cli::Cli) {
-    println!("Tank wars server");
+    println!("🎮 Maze Wars Multiplayer Server");
     println!("Host: {}", args.host);
     println!("Port: {}", args.port);
-    println!("Difficulty: {}", args.difficulty);
-    println!("----------------");
+
+    let difficulty_info = match args.difficulty.as_str() {
+        "easy" => "Easy (More connections, fewer dead ends)",
+        "medium" => "Medium (Balanced maze complexity)",
+        "hard" => "Hard (Minimal connections, more dead ends)",
+        _ => "Unknown",
+    };
+    println!("Difficulty: {} - {}", args.difficulty, difficulty_info);
+    println!("Maze Size: 12x12 with randomized spawn points");
+    println!("Max Players: 8");
+    println!("=====================================");
 }
 
 pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
