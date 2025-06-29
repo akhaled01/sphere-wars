@@ -25,13 +25,13 @@ pub fn handle_shutdown_signal(network: Res<NetworkClient>, mut exit: EventWriter
 pub fn handle_app_exit(mut exit_events: EventReader<AppExit>, network: Res<NetworkClient>) {
     for _exit_event in exit_events.read() {
         println!("App is exiting, sending LeaveGame message...");
-        
+
         // Send LeaveGame message to server
         network.send_leave_game();
-        
+
         // Give a brief moment for the message to be sent
         std::thread::sleep(std::time::Duration::from_millis(100));
-        
+
         println!("Gracefully disconnected from server");
         break; // Only handle the first exit event
     }

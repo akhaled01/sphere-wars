@@ -22,7 +22,7 @@ pub fn print_info(args: &cli::Cli) {
 
 pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
     let addr = format!("{}:{}", host, port);
-    
+
     // Check if port is available before binding
     match UdpSocket::bind(&addr).await {
         Ok(socket) => {
@@ -31,7 +31,7 @@ pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
         }
         Err(e) => {
             eprintln!("❌ Failed to bind to {}: {}", addr, e);
-            
+
             match e.kind() {
                 std::io::ErrorKind::AddrInUse => {
                     eprintln!("💡 Port {} is already in use. Please:", port);
@@ -49,7 +49,7 @@ pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
                     eprintln!("💡 Network error: {}", e);
                 }
             }
-            
+
             std::process::exit(1);
         }
     }

@@ -6,7 +6,10 @@ use tokio::net::UdpSocket;
 use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
-use shared::{ClientMessage, GameState, HitscanResult, MazeConfig, MazeData, Player, ServerMessage, SpawnPoint, WeaponConfig, generate_maze_from_config};
+use shared::{
+    ClientMessage, GameState, HitscanResult, MazeConfig, MazeData, Player, ServerMessage,
+    SpawnPoint, WeaponConfig, generate_maze_from_config,
+};
 
 use crate::utils::log_info;
 
@@ -117,7 +120,7 @@ impl GameServer {
             let available_points: Vec<usize> = (0..maze_data.spawn_points.len())
                 .filter(|i| !self.used_spawn_points.contains(i))
                 .collect();
-            
+
             if !available_points.is_empty() {
                 let mut rng = rand::thread_rng();
                 let selected_idx = available_points[rng.gen_range(0..available_points.len())];
@@ -133,7 +136,8 @@ impl GameServer {
         if let Some(maze_data) = &self.maze_data {
             for (idx, spawn_point) in maze_data.spawn_points.iter().enumerate() {
                 let distance = spawn_point.position.distance(position);
-                if distance < 2.0 { // Close enough to be the same spawn point
+                if distance < 2.0 {
+                    // Close enough to be the same spawn point
                     self.used_spawn_points.retain(|&x| x != idx);
                     break;
                 }
@@ -286,7 +290,7 @@ impl GameServer {
             if let Some(player) = self.players.remove(&player_id) {
                 // Release the spawn point for reuse
                 self.release_spawn_point(player.position);
-                
+
                 let left_msg = ServerMessage::PlayerLeft {
                     player_id: player.id,
                 };
@@ -408,7 +412,7 @@ impl GameServer {
             if should_respawn {
                 // Get spawn point before getting mutable reference to player
                 let spawn_point = self.get_random_spawn_point();
-                
+
                 if let Some(player) = self.players.get_mut(&player_id) {
                     // Respawn player at random maze spawn point
                     if let Some(spawn_point) = spawn_point {

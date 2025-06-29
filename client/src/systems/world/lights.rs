@@ -11,7 +11,7 @@ pub fn setup_world_lighting(commands: &mut Commands) {
         },
         Transform::from_xyz(10.0, 20.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-    
+
     // Add ambient light for better visibility without performance cost
     commands.insert_resource(AmbientLight {
         color: Color::srgb(0.4, 0.4, 0.5),
