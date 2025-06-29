@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use crate::components::{
     player::{FollowCamera, Player},
     projectile::Weapon,
-    network::GameData,
 };
 use crate::NetworkClient;
+use crate::systems::ui::death_screen::DeathState;
 
 pub fn hitscan_shooting(
     mouse_input: Res<ButtonInput<MouseButton>>,
@@ -12,23 +12,15 @@ pub fn hitscan_shooting(
     camera_q: Query<&Transform, (With<FollowCamera>, Without<Player>)>,
     network: Res<NetworkClient>,
     time: Res<Time>,
-    game_data: Res<GameData>,
+    death_state: Res<DeathState>,
 ) {
     if !mouse_input.just_pressed(MouseButton::Left) {
         return;
     }
 
-    // Check if local player is alive before allowing shooting
-    if let Some(my_id) = &game_data.my_id {
-        if let Some(my_player) = game_data.players.get(my_id) {
-            if !my_player.is_alive {
-                return; // Don't allow shooting when dead
-            }
-        } else {
-            return; // Player not found in game data
-        }
-    } else {
-        return; // No player ID assigned yet
+    // Don't allow shooting when dead
+    if death_state.is_dead {
+        return;
     }
 
     let camera_transform = if let Ok(transform) = camera_q.single() {

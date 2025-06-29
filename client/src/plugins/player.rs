@@ -1,12 +1,14 @@
 use bevy::prelude::*;
 
-use crate::systems::player::{camera::*, physics::*, setup::*, shooting::*, respawn::*};
+use crate::systems::player::{camera::*, physics::*, setup::*, shooting::*};
+use crate::systems::ui::death_screen::*;
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<RespawnTimer>()
+        app.init_resource::<DeathState>()
+            .add_systems(Startup, setup_death_screen)
             .add_systems(
                 Update,
                 (
@@ -19,7 +21,10 @@ impl Plugin for PlayerPlugin {
                     grab_mouse,
                     handle_collisions,
                     hitscan_shooting,
-                    handle_respawn_timer,
+                    update_death_state,
+                    handle_death_screen,
+                    handle_manual_respawn,
+                    disable_movement_when_dead,
                 ),
             );
     }

@@ -225,9 +225,19 @@ fn handle_network_messages(
                     player.deaths += 1;
                 }
 
-                // Despawn the player entity when they die
-                if let Some(entity) = game_data.player_entities.get(&player_id) {
-                    commands.entity(*entity).despawn();
+                // Only despawn remote players, keep local player entity alive for death screen
+                if Some(&player_id) != game_data.my_id.as_ref() {
+                    if let Some(entity) = game_data.player_entities.get(&player_id) {
+                        commands.entity(*entity).despawn();
+                    }
+                } else {
+                    // For local player, remove visual components but keep entity alive for camera and UI
+                    if let Some(entity) = game_data.player_entities.get(&player_id) {
+                        if let Ok(mut entity_commands) = commands.get_entity(*entity) {
+                            entity_commands.remove::<Mesh3d>();
+                            entity_commands.remove::<MeshMaterial3d<StandardMaterial>>();
+                        }
+                    }
                 }
 
                 // Update killer stats
@@ -337,6 +347,10 @@ fn handle_network_messages(
                             if let Ok(mut transform) = player_transforms.get_mut(*entity) {
                                 transform.translation = final_position;
                                 transform.rotation = final_rotation;
+                            }
+                            // Make local player visible again on respawn
+                            if let Ok(mut entity_commands) = commands.get_entity(*entity) {
+                                entity_commands.insert(Visibility::Visible);
                             }
                         }
                     }
