@@ -2,8 +2,10 @@ use bevy::prelude::*;
 
 use connection::ConnectionInfo;
 use network::NetworkClient;
-use plugins::{NetworkPlugin, PlayerPlugin, WorldPlugin};
-use systems::utils::{get_init_plugins, handle_app_exit, handle_shutdown_signal, setup_signal_handlers};
+use plugins::{NetworkPlugin, PlayerPlugin, UIPlugin, WorldPlugin};
+use systems::utils::{
+    get_init_plugins, handle_app_exit, handle_shutdown_signal, setup_signal_handlers,
+};
 
 mod components;
 mod connection;
@@ -36,7 +38,13 @@ fn main() {
 
     println!("🎮 Starting Maze Wars...");
     App::new()
-        .add_plugins((get_init_plugins(), WorldPlugin, PlayerPlugin, NetworkPlugin))
+        .add_plugins((
+            get_init_plugins(),
+            WorldPlugin,
+            PlayerPlugin,
+            NetworkPlugin,
+            UIPlugin,
+        ))
         .insert_resource(network)
         .add_systems(Update, (handle_shutdown_signal, handle_app_exit))
         .run();

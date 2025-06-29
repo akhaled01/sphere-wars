@@ -16,7 +16,6 @@ pub fn print_info(args: &cli::Cli) {
     };
     println!("Difficulty: {} - {}", args.difficulty, difficulty_info);
     println!("Maze Size: 12x12 with randomized spawn points");
-    println!("Max Players: 8");
     println!("=====================================");
 }
 

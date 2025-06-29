@@ -3,9 +3,11 @@ use crate::{
         network::{GameData, LocalPlayer, RemotePlayer},
         player::{Grounded, RotateOnLoad, Velocity},
         projectile::{HitEffect, Weapon},
+        ui::MessageContainer,
         world::SharedMaze,
     },
     network::NetworkClient,
+    plugins::ui::show_message,
 };
 use bevy::prelude::*;
 use shared::{MazeConfig, Player, ServerMessage, generate_maze_from_config};
@@ -55,6 +57,7 @@ fn handle_network_messages(
     maze: Option<Res<SharedMaze>>,
     mut player_transforms: Query<&mut Transform, (With<LocalPlayer>, Without<RemotePlayer>)>,
     mut remote_transforms: Query<&mut Transform, (With<RemotePlayer>, Without<LocalPlayer>)>,
+    message_container: Query<Entity, With<MessageContainer>>,
 ) {
     if let Some(message) = network.try_recv() {
         match message {
@@ -394,6 +397,10 @@ fn handle_network_messages(
                 println!("Server is shutting down");
                 println!("Game ended. Closing application...");
                 std::process::exit(0);
+            }
+            ServerMessage::Error { message } => {
+                // Show error message in UI
+                show_message(&mut commands, message, 3.0, &message_container);
             }
             _ => {}
         }
