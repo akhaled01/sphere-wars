@@ -22,8 +22,37 @@ pub fn print_info(args: &cli::Cli) {
 
 pub async fn create_udp_server_socket(host: &str, port: u16) -> UdpSocket {
     let addr = format!("{}:{}", host, port);
-    let socket = UdpSocket::bind(addr).await.unwrap();
-    socket
+    
+    // Check if port is available before binding
+    match UdpSocket::bind(&addr).await {
+        Ok(socket) => {
+            println!("✅ Successfully bound to {}", addr);
+            socket
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to bind to {}: {}", addr, e);
+            
+            match e.kind() {
+                std::io::ErrorKind::AddrInUse => {
+                    eprintln!("💡 Port {} is already in use. Please:", port);
+                    eprintln!("   1. Stop any existing server instances");
+                    eprintln!("   2. Wait a few seconds for the port to be released");
+                    eprintln!("   3. Try a different port with: --port <PORT>");
+                    eprintln!("   4. Check what's using the port with: lsof -i :{}", port);
+                }
+                std::io::ErrorKind::PermissionDenied => {
+                    eprintln!("💡 Permission denied. Try:");
+                    eprintln!("   1. Using a port above 1024 (current: {})", port);
+                    eprintln!("   2. Running with appropriate permissions");
+                }
+                _ => {
+                    eprintln!("💡 Network error: {}", e);
+                }
+            }
+            
+            std::process::exit(1);
+        }
+    }
 }
 
 const GREEN: &str = "\x1b[32m";
