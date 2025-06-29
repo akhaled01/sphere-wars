@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
 pub fn setup_world_lighting(commands: &mut Commands) {
-    // Use directional light instead of point light for better performance
     commands.spawn((
         DirectionalLight {
             shadows_enabled: false,
@@ -14,7 +13,6 @@ pub fn setup_world_lighting(commands: &mut Commands) {
 }
 
 pub fn setup_maze_lighting(commands: &mut Commands) {
-    // Single directional light for the maze
     commands.spawn((
         DirectionalLight {
             illuminance: 10000.0,

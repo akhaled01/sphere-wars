@@ -100,7 +100,6 @@ pub fn handle_manual_respawn(
 
 pub fn disable_movement_when_dead(
     death_state: Res<DeathState>,
-    game_data: Res<GameData>,
     mut player_query: Query<&mut Transform, With<crate::components::player::Player>>,
 ) {
     if death_state.is_dead {

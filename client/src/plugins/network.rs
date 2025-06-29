@@ -231,11 +231,10 @@ fn handle_network_messages(
                         commands.entity(*entity).despawn();
                     }
                 } else {
-                    // For local player, remove visual components but keep entity alive for camera and UI
+                    // For local player, scale to zero to hide but keep entity alive for camera and UI
                     if let Some(entity) = game_data.player_entities.get(&player_id) {
-                        if let Ok(mut entity_commands) = commands.get_entity(*entity) {
-                            entity_commands.remove::<Mesh3d>();
-                            entity_commands.remove::<MeshMaterial3d<StandardMaterial>>();
+                        if let Ok(mut transform) = player_transforms.get_mut(*entity) {
+                            transform.scale = Vec3::ZERO;
                         }
                     }
                 }
@@ -347,10 +346,7 @@ fn handle_network_messages(
                             if let Ok(mut transform) = player_transforms.get_mut(*entity) {
                                 transform.translation = final_position;
                                 transform.rotation = final_rotation;
-                            }
-                            // Make local player visible again on respawn
-                            if let Ok(mut entity_commands) = commands.get_entity(*entity) {
-                                entity_commands.insert(Visibility::Visible);
+                                transform.scale = Vec3::ONE; // Restore normal scale on respawn
                             }
                         }
                     }

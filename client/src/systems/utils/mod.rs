@@ -1,11 +1,11 @@
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    diagnostic::FrameTimeDiagnosticsPlugin,
     prelude::*,
     window::{PresentMode, WindowTheme},
 };
 
-use std::time::Duration;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 pub fn get_init_plugins() -> impl PluginGroup {
     DefaultPlugins
@@ -27,14 +27,14 @@ pub fn get_init_plugins() -> impl PluginGroup {
             ..default()
         })
         .add(FrameTimeDiagnosticsPlugin::default())
-        .add(LogDiagnosticsPlugin::default())
+        // .add(LogDiagnosticsPlugin::default())
 }
 
 pub fn test_server_connection(host: &str, port: u16) -> bool {
     use std::net::UdpSocket;
-    
+
     info!("Testing connection to server at {}:{}...", host, port);
-    
+
     // Create a temporary socket for testing
     let socket = match UdpSocket::bind("0.0.0.0:0") {
         Ok(socket) => socket,
@@ -43,13 +43,13 @@ pub fn test_server_connection(host: &str, port: u16) -> bool {
             return false;
         }
     };
-    
+
     // Set a timeout for the socket
     if let Err(e) = socket.set_read_timeout(Some(Duration::from_secs(5))) {
         error!("Failed to set socket timeout: {}", e);
         return false;
     }
-    
+
     let server_addr: SocketAddr = match format!("{}:{}", host, port).parse() {
         Ok(addr) => addr,
         Err(e) => {
@@ -57,7 +57,7 @@ pub fn test_server_connection(host: &str, port: u16) -> bool {
             return false;
         }
     };
-    
+
     // Send a test message
     let test_msg = shared::ClientMessage::TestHealth;
     let msg_str = match serde_json::to_string(&test_msg) {
@@ -67,13 +67,13 @@ pub fn test_server_connection(host: &str, port: u16) -> bool {
             return false;
         }
     };
-    
+
     // Send the message
     if let Err(e) = socket.send_to(msg_str.as_bytes(), server_addr) {
         error!("Failed to send message to server: {}", e);
         return false;
     }
-    
+
     // Wait for response
     let mut buf = [0; 1024];
     match socket.recv_from(&mut buf) {
