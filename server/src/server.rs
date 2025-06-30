@@ -319,6 +319,70 @@ impl GameServer {
         }
     }
 
+    // Check if a ray from origin to target intersects any walls
+    fn ray_intersects_wall(&self, origin: Vec3, target: Vec3) -> bool {
+        if let Some(maze_data) = &self.maze_data {
+            const TILE_SIZE: f32 = 4.0; // Same as client rendering
+            const WALL_HEIGHT: f32 = 8.0;
+            
+            let grid = &maze_data.grid;
+            let grid_height = grid.len();
+            let grid_width = if grid_height > 0 { grid[0].len() } else { 0 };
+            
+            if grid_width == 0 || grid_height == 0 {
+                return false;
+            }
+            
+            // Calculate maze offset (same as client)
+            let maze_width_world = grid_width as f32 * TILE_SIZE;
+            let maze_height_world = grid_height as f32 * TILE_SIZE;
+            let offset_x = -maze_width_world / 2.0 + TILE_SIZE / 2.0;
+            let offset_z = -maze_height_world / 2.0 + TILE_SIZE / 2.0;
+            
+            // Use DDA (Digital Differential Analyzer) algorithm for ray casting
+            let ray_dir = (target - origin).normalize();
+            let ray_length = origin.distance(target);
+            
+            // Step along the ray in small increments
+            let step_size = 0.5; // Check every 0.5 units
+            let num_steps = (ray_length / step_size) as i32;
+            
+            for i in 0..=num_steps {
+                let t = (i as f32) * step_size;
+                if t > ray_length {
+                    break;
+                }
+                
+                let ray_pos = origin + ray_dir * t;
+                
+                // Skip if ray is too low or too high (below floor or above walls)
+                if ray_pos.y < 0.0 || ray_pos.y > WALL_HEIGHT {
+                    continue;
+                }
+                
+                // Convert world position to grid coordinates
+                let world_x = ray_pos.x - offset_x;
+                let world_z = ray_pos.z - offset_z;
+                
+                let grid_x = (world_x / TILE_SIZE).floor() as i32;
+                let grid_z = (world_z / TILE_SIZE).floor() as i32;
+                
+                // Check bounds
+                if grid_x >= 0 && grid_x < grid_width as i32 && grid_z >= 0 && grid_z < grid_height as i32 {
+                    let grid_x = grid_x as usize;
+                    let grid_z = grid_z as usize;
+                    
+                    // Check if this position has a wall
+                    if grid[grid_z][grid_x] {
+                        return true; // Ray hit a wall
+                    }
+                }
+            }
+        }
+        
+        false // No wall intersection found
+    }
+
     async fn handle_player_shoot(&mut self, addr: SocketAddr, origin: Vec3, direction: Vec3) {
         if let Some(shooter_id) = self.addr_to_id.get(&addr) {
             if let Some(_) = self.players.get(shooter_id) {
@@ -335,10 +399,13 @@ impl GameServer {
                     if other_id != shooter_id && other_player.is_alive {
                         let distance = origin.distance(other_player.position);
                         if distance <= weapon_config.range && distance < hit_result.distance {
-                            hit_result.hit = true;
-                            hit_result.hit_position = Some(other_player.position);
-                            hit_result.hit_player_id = Some(other_id.clone());
-                            hit_result.distance = distance;
+                            // Check if there's a wall between shooter and target
+                            if !self.ray_intersects_wall(origin, other_player.position) {
+                                hit_result.hit = true;
+                                hit_result.hit_position = Some(other_player.position);
+                                hit_result.hit_player_id = Some(other_id.clone());
+                                hit_result.distance = distance;
+                            }
                         }
                     }
                 }
