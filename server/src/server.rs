@@ -323,7 +323,7 @@ impl GameServer {
     fn ray_intersects_wall(&self, origin: Vec3, target: Vec3) -> bool {
         if let Some(maze_data) = &self.maze_data {
             const TILE_SIZE: f32 = 4.0; // Same as client rendering
-            const WALL_HEIGHT: f32 = 8.0;
+            const PLAYER_RADIUS: f32 = 0.8; // Player hitbox radius
             
             let grid = &maze_data.grid;
             let grid_height = grid.len();
@@ -339,24 +339,19 @@ impl GameServer {
             let offset_x = -maze_width_world / 2.0 + TILE_SIZE / 2.0;
             let offset_z = -maze_height_world / 2.0 + TILE_SIZE / 2.0;
             
-            // Use DDA (Digital Differential Analyzer) algorithm for ray casting
             let ray_dir = (target - origin).normalize();
             let ray_length = origin.distance(target);
             
-            // Step along the ray in small increments
-            let step_size = 0.5; // Check every 0.5 units
+            // Use smaller step size for more precision
+            let step_size = 0.2;
             let num_steps = (ray_length / step_size) as i32;
             
-            for i in 0..=num_steps {
+            for i in 1..num_steps { // Start from 1 to skip shooter position, end before target
                 let t = (i as f32) * step_size;
-                if t > ray_length {
-                    break;
-                }
-                
                 let ray_pos = origin + ray_dir * t;
                 
-                // Skip if ray is too low or too high (below floor or above walls)
-                if ray_pos.y < 0.0 || ray_pos.y > WALL_HEIGHT {
+                // Only check at player height (around chest level)
+                if ray_pos.y < 1.0 || ray_pos.y > 3.0 {
                     continue;
                 }
                 
@@ -374,7 +369,12 @@ impl GameServer {
                     
                     // Check if this position has a wall
                     if grid[grid_z][grid_x] {
-                        return true; // Ray hit a wall
+                        // Additional check: make sure we're not too close to the target
+                        // (to account for player standing right next to wall)
+                        let remaining_distance = ray_pos.distance(target);
+                        if remaining_distance > PLAYER_RADIUS {
+                            return true; // Ray hit a wall with sufficient distance from target
+                        }
                     }
                 }
             }
