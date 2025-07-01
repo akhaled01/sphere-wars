@@ -2,7 +2,7 @@
 
 export RUST_LOG=info
 
-rm ./bin
+rm -rf ./bin
 
 
 get_font() {
