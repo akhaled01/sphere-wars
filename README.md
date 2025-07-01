@@ -1,11 +1,11 @@
-# Tank Wars 🎮
+# Sphere Wars 🎮
 
-A thrilling multiplayer 3D maze game built with Rust and the Bevy game engine. Navigate through procedurally generated mazes in your tank while competing against other players in intense tactical combat.
+A thrilling multiplayer 3D maze game built with Rust and the Bevy game engine. Navigate through procedurally generated mazes in your sphere while competing against other players in intense tactical combat.
 
 ## 🚀 Features
 
 ### Core Gameplay
-- **3D Maze Navigation**: Explore complex procedurally generated mazes with your tank
+- **3D Maze Navigation**: Explore complex procedurally generated mazes with your sphere
 - **First-Person Perspective**: Immersive camera controls with full pitch and yaw movement
 - **Real-time Minimap**: Navigate with confidence using the synchronized minimap that shows your exact position and the maze layout
 - **Smooth Controls**: Responsive WASD movement with mouse look controls
@@ -18,7 +18,6 @@ A thrilling multiplayer 3D maze game built with Rust and the Bevy game engine. N
 
 ### Visual Features
 - **Modern 3D Graphics**: High-quality materials and lighting effects
-- **Tank Model**: Detailed 3D tank with proper collision detection
 - **Dynamic Lighting**: Atmospheric lighting system for immersive gameplay
 - **UI Elements**: Clean HUD with FPS counter and minimap overlay
 
@@ -70,7 +69,7 @@ cargo build --release
 ## 🎨 Game Design
 
 ### Maze Features
-- **Scale**: 6-unit wide corridors for comfortable tank navigation
+- **Scale**: 6-unit wide corridors for comfortable sphere navigation
 - **Dimensions**: 12x12 node generation creating 37x37 matrix layouts
 - **Walls**: 18-unit tall walls for immersive maze experience
 - **Materials**: High-contrast materials for clear visibility
@@ -122,7 +121,7 @@ We welcome contributions! Please feel free to submit issues, feature requests, o
 ## 🎮 Multiplayer Features (Coming Soon)
 
 - **Network Play**: Real-time multiplayer combat
-- **Player vs Player**: Tactical tank battles in maze environments
+- **Player vs Player**: Tactical sphere battles in maze environments
 - **Team Modes**: Cooperative and competitive game modes
 - **Leaderboards**: Track your performance and compete globally
 
@@ -133,5 +132,4 @@ This project is open source. See the LICENSE file for details.
 ## 🙏 Acknowledgments
 
 - Built with the [Bevy](https://bevyengine.org/) game engine
-- Tank model and assets from various open-source contributors
-- Inspired by classic maze and tank games
+- Inspired by the maze runner game
