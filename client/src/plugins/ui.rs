@@ -1,5 +1,5 @@
+use crate::components::ui::{MessageContainer, MessageDisplay};
 use bevy::prelude::*;
-use crate::components::ui::{MessageDisplay, MessageContainer};
 
 pub struct UIPlugin;
 
@@ -65,19 +65,13 @@ pub fn show_message(
     }
 }
 
-fn update_message_display(
-    mut query: Query<&mut MessageDisplay>,
-    time: Res<Time>,
-) {
+fn update_message_display(mut query: Query<&mut MessageDisplay>, time: Res<Time>) {
     for mut message in query.iter_mut() {
         message.timer.tick(time.delta());
     }
 }
 
-fn cleanup_expired_messages(
-    mut commands: Commands,
-    query: Query<(Entity, &MessageDisplay)>,
-) {
+fn cleanup_expired_messages(mut commands: Commands, query: Query<(Entity, &MessageDisplay)>) {
     for (entity, message) in query.iter() {
         if message.timer.finished() {
             commands.entity(entity).despawn();

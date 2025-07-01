@@ -19,8 +19,3 @@ pub fn setup_world_lighting(commands: &mut Commands) {
         affects_lightmapped_meshes: false,
     });
 }
-
-pub fn setup_maze_lighting(_commands: &mut Commands) {
-    // Remove duplicate lighting - world lighting is sufficient
-    // This eliminates redundant light sources for better performance
-}

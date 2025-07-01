@@ -1,3 +1,4 @@
+pub mod maze;
 pub mod network;
 pub mod player;
 pub mod projectile;

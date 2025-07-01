@@ -324,49 +324,54 @@ impl GameServer {
         if let Some(maze_data) = &self.maze_data {
             const TILE_SIZE: f32 = 4.0; // Same as client rendering
             const PLAYER_RADIUS: f32 = 0.8; // Player hitbox radius
-            
+
             let grid = &maze_data.grid;
             let grid_height = grid.len();
             let grid_width = if grid_height > 0 { grid[0].len() } else { 0 };
-            
+
             if grid_width == 0 || grid_height == 0 {
                 return false;
             }
-            
+
             // Calculate maze offset (same as client)
             let maze_width_world = grid_width as f32 * TILE_SIZE;
             let maze_height_world = grid_height as f32 * TILE_SIZE;
             let offset_x = -maze_width_world / 2.0 + TILE_SIZE / 2.0;
             let offset_z = -maze_height_world / 2.0 + TILE_SIZE / 2.0;
-            
+
             let ray_dir = (target - origin).normalize();
             let ray_length = origin.distance(target);
-            
+
             // Use smaller step size for more precision
             let step_size = 0.2;
             let num_steps = (ray_length / step_size) as i32;
-            
-            for i in 1..num_steps { // Start from 1 to skip shooter position, end before target
+
+            for i in 1..num_steps {
+                // Start from 1 to skip shooter position, end before target
                 let t = (i as f32) * step_size;
                 let ray_pos = origin + ray_dir * t;
-                
+
                 // Only check at player height (around chest level)
                 if ray_pos.y < 1.0 || ray_pos.y > 3.0 {
                     continue;
                 }
-                
+
                 // Convert world position to grid coordinates
                 let world_x = ray_pos.x - offset_x;
                 let world_z = ray_pos.z - offset_z;
-                
+
                 let grid_x = (world_x / TILE_SIZE).floor() as i32;
                 let grid_z = (world_z / TILE_SIZE).floor() as i32;
-                
+
                 // Check bounds
-                if grid_x >= 0 && grid_x < grid_width as i32 && grid_z >= 0 && grid_z < grid_height as i32 {
+                if grid_x >= 0
+                    && grid_x < grid_width as i32
+                    && grid_z >= 0
+                    && grid_z < grid_height as i32
+                {
                     let grid_x = grid_x as usize;
                     let grid_z = grid_z as usize;
-                    
+
                     // Check if this position has a wall
                     if grid[grid_z][grid_x] {
                         // Additional check: make sure we're not too close to the target
@@ -379,7 +384,7 @@ impl GameServer {
                 }
             }
         }
-        
+
         false // No wall intersection found
     }
 

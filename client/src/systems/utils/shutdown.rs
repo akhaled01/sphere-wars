@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::net::NetworkClient;
+use bevy::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Global flag to track if shutdown signal was received

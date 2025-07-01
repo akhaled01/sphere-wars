@@ -13,28 +13,28 @@ impl ConnectionInfo {
     pub fn prompt_user() -> Result<Self, Box<dyn std::error::Error>> {
         println!("🎮 Welcome to Maze Wars!");
         println!("=============================");
-        
+
         let theme = ColorfulTheme::default();
-        
+
         // Prompt for server address
         let host: String = Input::with_theme(&theme)
             .with_prompt("Server address")
             .default("127.0.0.1".to_string())
             .interact_text()?;
-        
+
         // Prompt for port
         let port: u16 = Input::with_theme(&theme)
             .with_prompt("Server port")
             .default(8080)
             .interact_text()?;
-        
+
         // Test server connection first
         println!("🔍 Testing connection to {}:{}...", host, port);
         if !test_server_health(&host, port) {
             return Err("❌ Cannot connect to server. Please check the address and port.".into());
         }
         println!("✅ Server connection successful!");
-        
+
         // Prompt for username
         let username: String = Input::with_theme(&theme)
             .with_prompt("Enter your username")
@@ -48,7 +48,7 @@ impl ConnectionInfo {
                 }
             })
             .interact_text()?;
-        
+
         // Test username availability
         println!("🔍 Checking username availability...");
         match test_username_availability(&host, port, &username) {
@@ -56,13 +56,15 @@ impl ConnectionInfo {
                 println!("✅ Username '{}' is available!", username);
             }
             UsernameStatus::Taken => {
-                return Err("❌ Username is already taken. Please restart and try a different name.".into());
+                return Err(
+                    "❌ Username is already taken. Please restart and try a different name.".into(),
+                );
             }
             UsernameStatus::Error(msg) => {
                 return Err(format!("❌ Error checking username: {}", msg).into());
             }
         }
-        
+
         Ok(ConnectionInfo {
             host,
             port,
@@ -83,23 +85,26 @@ fn test_server_health(host: &str, port: u16) -> bool {
         Ok(s) => s,
         Err(_) => return false,
     };
-    
-    if socket.set_read_timeout(Some(Duration::from_secs(5))).is_err() {
+
+    if socket
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .is_err()
+    {
         return false;
     }
-    
+
     let server_addr = format!("{}:{}", host, port);
     let test_msg = ClientMessage::TestHealth;
-    
+
     let serialized = match serde_json::to_string(&test_msg) {
         Ok(s) => s,
         Err(_) => return false,
     };
-    
+
     if socket.send_to(serialized.as_bytes(), &server_addr).is_err() {
         return false;
     }
-    
+
     let mut buf = [0; 1024];
     match socket.recv_from(&mut buf) {
         Ok((len, _)) => {
@@ -115,25 +120,25 @@ fn test_username_availability(host: &str, port: u16, username: &str) -> Username
         Ok(s) => s,
         Err(e) => return UsernameStatus::Error(format!("Failed to create socket: {}", e)),
     };
-    
+
     if let Err(e) = socket.set_read_timeout(Some(Duration::from_secs(5))) {
         return UsernameStatus::Error(format!("Failed to set timeout: {}", e));
     }
-    
+
     let server_addr = format!("{}:{}", host, port);
     let join_msg = ClientMessage::JoinGame {
         player_name: username.to_string(),
     };
-    
+
     let serialized = match serde_json::to_string(&join_msg) {
         Ok(s) => s,
         Err(e) => return UsernameStatus::Error(format!("Failed to serialize message: {}", e)),
     };
-    
+
     if let Err(e) = socket.send_to(serialized.as_bytes(), &server_addr) {
         return UsernameStatus::Error(format!("Failed to send message: {}", e));
     }
-    
+
     let mut buf = [0; 1024];
     match socket.recv_from(&mut buf) {
         Ok((len, _)) => {
