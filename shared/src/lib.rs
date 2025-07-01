@@ -27,7 +27,7 @@ pub struct WeaponConfig {
 impl Default for WeaponConfig {
     fn default() -> Self {
         Self {
-            damage: 25.0,
+            damage: 50.0,
             range: 100.0,
             fire_rate: 4.0,
         }
