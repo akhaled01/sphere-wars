@@ -16,7 +16,17 @@ pub fn grab_mouse(
 ) {
     if mouse.just_pressed(MouseButton::Left) {
         window.cursor_options.visible = false;
-        window.cursor_options.grab_mode = CursorGrabMode::Locked;
+
+        // Use different cursor grab modes based on platform
+        // CursorGrabMode::Locked can cause input issues on Linux
+        #[cfg(target_os = "linux")]
+        {
+            window.cursor_options.grab_mode = CursorGrabMode::Confined;
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            window.cursor_options.grab_mode = CursorGrabMode::Locked;
+        }
     }
 
     if key.just_pressed(KeyCode::Escape) {
