@@ -10,6 +10,7 @@ use crate::{
     plugins::ui::show_message,
 };
 use bevy::prelude::*;
+use bevy::render::mesh::{Indices, PrimitiveTopology};
 use shared::{MazeConfig, Player, ServerMessage, generate_maze_from_config};
 use std::collections::HashMap;
 
@@ -46,6 +47,62 @@ impl Plugin for NetworkPlugin {
     }
 }
 
+// Helper function to create a pyramid mesh for players
+fn create_pyramid_mesh() -> Mesh {
+    let height = 2.0;
+    let base_size = 1.5;
+    
+    // Define vertices for a square-based pyramid
+    let vertices = vec![
+        // Base vertices (square)
+        [-base_size, 0.0, -base_size], // 0: back-left
+        [base_size, 0.0, -base_size],  // 1: back-right
+        [base_size, 0.0, base_size],   // 2: front-right
+        [-base_size, 0.0, base_size],  // 3: front-left
+        // Apex vertex
+        [0.0, height, 0.0],           // 4: top
+    ];
+    
+    // Define normals for each vertex
+    let normals = vec![
+        [0.0, -1.0, 0.0], // Base vertices point down
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, -1.0, 0.0],
+        [0.0, 1.0, 0.0],  // Apex points up
+    ];
+    
+    // Define UV coordinates
+    let uvs = vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.0, 1.0],
+        [0.5, 0.5], // Apex UV
+    ];
+    
+    // Define triangular faces
+    let indices = vec![
+        // Base (two triangles)
+        0, 1, 2,  // Triangle 1
+        0, 2, 3,  // Triangle 2
+        // Side faces (4 triangles pointing to apex)
+        0, 4, 1,  // Back face
+        1, 4, 2,  // Right face  
+        2, 4, 3,  // Front face (this points forward)
+        3, 4, 0,  // Left face
+    ];
+    
+    Mesh::new(
+        PrimitiveTopology::TriangleList,
+        bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
+    )
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+    .with_inserted_indices(Indices::U32(indices))
+}
+
 // System to receive and handle network messages
 fn handle_network_messages(
     network: Res<NetworkClient>,
@@ -75,14 +132,14 @@ fn handle_network_messages(
                         player_id.clone(),
                         network.player_name().to_string(),
                     ));
-                    // Spawn local player entity with sphere mesh
-                    let sphere = Mesh3d(meshes.add(Sphere::new(1.5)));
-                    let sphere_material = MeshMaterial3d(materials.add(player_color));
+                    // Spawn local player entity with pyramid mesh
+                    let pyramid = Mesh3d(meshes.add(create_pyramid_mesh()));
+                    let pyramid_material = MeshMaterial3d(materials.add(player_color));
 
                     let entity = commands
                         .spawn((
-                            sphere,
-                            sphere_material,
+                            pyramid,
+                            pyramid_material,
                             Transform::from_xyz(0.0, 1.0, 0.0),
                             LocalPlayer,
                             Velocity::default(),
@@ -160,9 +217,11 @@ fn handle_network_messages(
             }
             ServerMessage::PlayerLeft { player_id } => {
                 game_data.players.remove(&player_id);
-                // Remove the remote player entity if it exists
-                if let Some(entity) = game_data.player_entities.remove(&player_id) {
-                    commands.entity(entity).despawn();
+                // Only remove and despawn if it's not the local player
+                if Some(player_id.as_str()) != game_data.my_id.as_deref() {
+                    if let Some(entity) = game_data.player_entities.remove(&player_id) {
+                        commands.entity(entity).despawn();
+                    }
                 }
             }
             ServerMessage::GameStarted {
@@ -327,7 +386,7 @@ fn handle_network_messages(
                             };
                         let entity = commands
                             .spawn((
-                                Mesh3d(meshes.add(Sphere::new(1.5))),
+                                Mesh3d(meshes.add(create_pyramid_mesh())),
                                 MeshMaterial3d(materials.add(player_color)),
                                 Transform::from_translation(final_position)
                                     .with_rotation(final_rotation),
@@ -354,7 +413,7 @@ fn handle_network_messages(
                             };
                         let entity = commands
                             .spawn((
-                                Mesh3d(meshes.add(Sphere::new(1.5))),
+                                Mesh3d(meshes.add(create_pyramid_mesh())),
                                 MeshMaterial3d(materials.add(player_color)),
                                 Transform::from_translation(final_position)
                                     .with_rotation(final_rotation),
@@ -454,7 +513,7 @@ fn sync_remote_players(
         let player_color = Color::srgb(color[0], color[1], color[2]);
         let entity = commands
             .spawn((
-                Mesh3d(meshes.add(Sphere::new(1.5))),
+                Mesh3d(meshes.add(create_pyramid_mesh())),
                 MeshMaterial3d(materials.add(player_color)),
                 Transform::from_translation(position).with_rotation(rotation),
                 RemotePlayer { id: id.clone() },
