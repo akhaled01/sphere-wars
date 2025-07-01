@@ -1,5 +1,6 @@
 .DS_Store
 .vscode/
-
+bin/
 /target
 assets/
+fixes.md

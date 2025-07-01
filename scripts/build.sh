@@ -2,6 +2,15 @@
 
 export RUST_LOG=info
 
+get_font() {
+    if [ ! -f "./client/assets/SpaceMono-Regular.ttf" ]; then
+        mkdir -p ./client/assets
+        curl -s -o ./client/assets/SpaceMono-Regular.ttf https://github.com/google/fonts/blob/main/ofl/spacemono/SpaceMono-Regular.ttf
+    fi
+}
+
+get_font
+
 cargo build --bin server --release
 cargo build --bin client --release
 
