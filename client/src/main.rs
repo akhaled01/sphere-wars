@@ -1,15 +1,13 @@
 use bevy::prelude::*;
 
-use connection::ConnectionInfo;
-use network::NetworkClient;
+use net::{ConnectionInfo, NetworkClient};
 use plugins::{NetworkPlugin, PlayerPlugin, UIPlugin, WorldPlugin};
 use systems::utils::{
     get_init_plugins, handle_app_exit, handle_shutdown_signal, setup_signal_handlers,
 };
 
 mod components;
-mod connection;
-mod network;
+mod net;
 mod plugins;
 mod systems;
 

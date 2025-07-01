@@ -6,7 +6,7 @@ use crate::{
         ui::MessageContainer,
         world::SharedMaze,
     },
-    network::NetworkClient,
+    net::NetworkClient,
     plugins::ui::show_message,
 };
 use bevy::prelude::*;

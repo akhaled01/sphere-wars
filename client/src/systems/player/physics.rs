@@ -4,7 +4,7 @@ use crate::components::{
     player::{FollowCamera, Grounded, Player, Velocity},
     world::Collidable,
 };
-use crate::network::NetworkClient;
+use crate::net::NetworkClient;
 use crate::systems::ui::death_screen::DeathState;
 
 const PLAYER_SPEED: f32 = 15.0;

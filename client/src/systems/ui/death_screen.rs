@@ -1,5 +1,5 @@
 use crate::components::network::GameData;
-use crate::network::NetworkClient;
+use crate::net::NetworkClient;
 use bevy::prelude::*;
 
 #[derive(Resource, Default)]
