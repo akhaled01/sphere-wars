@@ -10,7 +10,7 @@ pub fn get_init_plugins() -> impl PluginGroup {
     DefaultPlugins
         .set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Mazey".into(),
+                title: "Maze Fuckers".into(),
                 name: Some("bevy.app".into()),
                 resolution: (1920., 1080.).into(),
                 present_mode: PresentMode::AutoVsync,

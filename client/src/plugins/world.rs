@@ -13,7 +13,9 @@ pub struct WorldPlugin;
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app
+        .insert_resource(ClearColor(Color::srgb(0.0, 0.8, 0.9)))
+        .add_systems(
             Startup,
             (
                 setup_maze_materials,

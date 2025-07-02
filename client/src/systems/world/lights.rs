@@ -9,7 +9,7 @@ pub fn setup_world_lighting(commands: &mut Commands) {
             color: Color::srgb(1.0, 0.95, 0.9), // Slightly warm light
             ..default()
         },
-        Transform::from_xyz(10.0, 20.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(20.0, 20.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 
     // Add ambient light for better visibility without performance cost

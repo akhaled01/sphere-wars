@@ -25,12 +25,14 @@ pub fn setup_world(
         },
     ));
 
+    // Instantiate Ground Plane
     commands.spawn((
         Mesh3d(meshes.add(Plane3d::default().mesh().size(1000.0, 1000.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.3, 0.3, 0.3))),
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
+    // Instantiate Player
     commands.spawn((
         Transform::from_xyz(0.0, 1.0, 0.0),
         Player,
