@@ -7,11 +7,27 @@ pub struct DeathState {
     pub is_dead: bool,
 }
 
+#[derive(Resource, Default)]
+pub struct DamageOverlayState {
+    pub show_overlay: bool,
+    pub timer: Timer,
+}
+
+impl DamageOverlayState {
+    pub fn trigger_damage_flash(&mut self) {
+        self.show_overlay = true;
+        self.timer = Timer::from_seconds(0.2, TimerMode::Once); // 200ms flash
+    }
+}
+
 #[derive(Component)]
 pub struct DeathScreenUI;
 
 #[derive(Component)]
 pub struct DeathText;
+
+#[derive(Component)]
+pub struct DamageOverlay;
 
 pub fn setup_death_screen(mut commands: Commands) {
     // Create death screen overlay (initially hidden)
@@ -58,6 +74,22 @@ pub fn setup_death_screen(mut commands: Commands) {
                 },
             ));
         });
+
+    // Create damage overlay (initially hidden)
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            top: Val::Px(0.0),
+            left: Val::Px(0.0),
+            // No z_index needed, will be above other elements
+            ..default()
+        },
+        BackgroundColor(Color::srgba(1.0, 0.0, 0.0, 0.3)), // Bright red with transparency
+        Visibility::Hidden, // Start hidden
+        DamageOverlay,
+    ));
 }
 
 pub fn handle_death_screen(
@@ -65,10 +97,33 @@ pub fn handle_death_screen(
     mut death_screen_query: Query<&mut Visibility, With<DeathScreenUI>>,
 ) {
     for mut visibility in death_screen_query.iter_mut() {
-        if death_state.is_dead {
-            *visibility = Visibility::Visible;
+        *visibility = if death_state.is_dead {
+            Visibility::Visible
         } else {
-            *visibility = Visibility::Hidden;
+            Visibility::Hidden
+        };
+    }
+}
+
+pub fn handle_damage_overlay(
+    time: Res<Time>,
+    mut damage_state: ResMut<DamageOverlayState>,
+    mut damage_overlay_query: Query<&mut Visibility, With<DamageOverlay>>,
+) {
+    if damage_state.show_overlay {
+        damage_state.timer.tick(time.delta());
+        
+        if damage_state.timer.finished() {
+            damage_state.show_overlay = false;
+            // Hide the overlay
+            for mut visibility in damage_overlay_query.iter_mut() {
+                *visibility = Visibility::Hidden;
+            }
+        } else {
+            // Show the overlay
+            for mut visibility in damage_overlay_query.iter_mut() {
+                *visibility = Visibility::Visible;
+            }
         }
     }
 }

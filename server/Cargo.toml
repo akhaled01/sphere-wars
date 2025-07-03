@@ -12,3 +12,4 @@ serde_json = "1.0.140"
 bevy = { version = "0.16.1", features = ["jpeg"] }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
 rand = "0.8"
+get_if_addrs = "0.5.3"

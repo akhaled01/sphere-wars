@@ -1,3 +1,5 @@
+use crate::utils;
+
 #[derive(clap::Parser)]
 pub struct Cli {
     #[clap(long, default_value = "127.0.0.1", help = "Server host address")]
@@ -12,6 +14,8 @@ pub struct Cli {
         long_help = "Maze difficulty affects maze complexity:\n  easy   - More connections, fewer dead ends (25% extra connections, 40% dead end removal)\n  medium - Balanced maze (15% extra connections, 20% dead end removal)\n  hard   - Minimal connections, more dead ends (5% extra connections, no dead end removal)"
     )]
     pub difficulty: String,
+    #[clap(short, long, help = "Host on local IP")]
+    pub local: bool,
 }
 
 impl Cli {
@@ -23,5 +27,12 @@ impl Cli {
                 self.difficulty
             )),
         }
+    }
+
+    pub async fn get_host(&mut self) -> String {
+        if self.local {
+            self.host = utils::get_local_ip().await;
+        }
+        self.host.clone()
     }
 }

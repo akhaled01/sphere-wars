@@ -10,7 +10,7 @@ pub fn get_init_plugins() -> impl PluginGroup {
     DefaultPlugins
         .set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Maze Fuckers".into(),
+                title: "Sphere Wars".into(),
                 name: Some("bevy.app".into()),
                 resolution: (1920., 1080.).into(),
                 present_mode: PresentMode::AutoVsync,
@@ -26,7 +26,6 @@ pub fn get_init_plugins() -> impl PluginGroup {
             ..default()
         })
         .add(FrameTimeDiagnosticsPlugin::default())
-    // .add(LogDiagnosticsPlugin::default())
 }
 
 pub use shutdown::*;

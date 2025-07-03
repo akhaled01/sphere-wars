@@ -8,6 +8,7 @@ use crate::{
     },
     net::NetworkClient,
     plugins::ui::show_message,
+    systems::ui::death_screen::DamageOverlayState,
 };
 use bevy::prelude::*;
 use shared::{MazeConfig, Player, ServerMessage, generate_maze_from_config};
@@ -48,16 +49,17 @@ impl Plugin for NetworkPlugin {
 
 // System to receive and handle network messages
 fn handle_network_messages(
-    network: Res<NetworkClient>,
     mut game_data: ResMut<GameData>,
     mut local_player: ResMut<LocalPlayerResource>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    maze: Option<Res<SharedMaze>>,
     mut player_transforms: Query<&mut Transform, (With<LocalPlayer>, Without<RemotePlayer>)>,
     mut remote_transforms: Query<&mut Transform, (With<RemotePlayer>, Without<LocalPlayer>)>,
+    mut damage_overlay: ResMut<DamageOverlayState>,
     message_container: Query<Entity, With<MessageContainer>>,
+    network: Res<NetworkClient>,
+    maze: Option<Res<SharedMaze>>,
 ) {
     if let Some(message) = network.try_recv() {
         match message {
@@ -223,6 +225,12 @@ fn handle_network_messages(
                 if let Some(player) = game_data.players.get_mut(&player_id) {
                     player.health = health;
                 }
+                
+                // Trigger damage overlay if this is the local player
+                if Some(player_id.as_str()) == game_data.my_id.as_deref() {
+                    damage_overlay.trigger_damage_flash();
+                }
+                
                 println!(
                     "Player {} took {} damage from {}. Health: {}",
                     player_id, damage, damage_by, health

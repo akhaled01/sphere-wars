@@ -11,7 +11,9 @@ use utils::{create_udp_server_socket, print_info};
 
 #[tokio::main]
 async fn main() {
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+
+    let host = cli.get_host().await;
 
     // Validate CLI arguments
     if let Err(error) = cli.validate() {
@@ -21,7 +23,7 @@ async fn main() {
 
     print_info(&cli);
 
-    let listener_socket = create_udp_server_socket(&cli.host, cli.port).await;
+    let listener_socket = create_udp_server_socket(&host, cli.port).await;
     let mut listener = GameServer::new(listener_socket, cli.difficulty);
 
     // Setup signal handling for graceful shutdown

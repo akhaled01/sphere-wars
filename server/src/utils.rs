@@ -70,3 +70,9 @@ pub fn log_warning(msg: &str) {
 pub fn log_error(msg: &str) {
     println!("{}{}{}", RED, msg, RESET);
 }
+
+pub async fn get_local_ip() -> String {
+    let socket = UdpSocket::bind("0.0.0.0:0").await.unwrap();
+    socket.connect("8.8.8.8:80").await.unwrap();
+    socket.local_addr().unwrap().ip().to_string()
+}
