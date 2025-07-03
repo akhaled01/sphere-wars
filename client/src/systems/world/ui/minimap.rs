@@ -166,10 +166,67 @@ pub fn update_player_position_on_minimap(
         }
     }
 
-    // Track existing remote dots
+    // Track existing remote player dots
     let mut existing_dots = HashMap::new();
-    for (_, remote_dot) in dots.p1().iter() {
-        existing_dots.insert(remote_dot.player_id.clone(), true);
+    for (_, dot) in dots.p1().iter() {
+        existing_dots.insert(dot.player_id.clone(), true);
+    }
+
+    // First ensure all players in game_data have dots
+    for (player_id, player) in game_data.players.iter() {
+        // Skip local player and players that already have dots
+        if Some(player_id.as_str()) == game_data.my_id.as_deref()
+            || existing_dots.contains_key(player_id)
+        {
+            continue;
+        }
+
+        // Create dot for this player at their current position
+        let player_pos = player.position;
+
+        // Convert world coordinates to minimap coordinates
+        let maze = &shared_maze.grid;
+        let maze_width = maze[0].len() as f32;
+        let maze_height = maze.len() as f32;
+        let pixel_size = MINIMAP_SIZE / maze_width.max(maze_height);
+
+        // Convert world position to maze grid coordinates
+        let grid_x = (player_pos.x + (maze_width * TILE_SIZE / 2.0)) / TILE_SIZE;
+        let grid_z = (player_pos.z + (maze_height * TILE_SIZE / 2.0)) / TILE_SIZE;
+
+        // Convert grid coordinates to minimap pixels
+        let minimap_x = grid_x * pixel_size;
+        let minimap_z = grid_z * pixel_size;
+
+        // Clamp to minimap bounds
+        let minimap_x = minimap_x.clamp(0.0, MINIMAP_SIZE - 8.0);
+        let minimap_z = minimap_z.clamp(0.0, MINIMAP_SIZE - 8.0);
+
+        // Get player color
+        let player_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
+
+        // Create new remote player dot
+        if let Ok(minimap_entity) = minimap_query.single() {
+            commands.entity(minimap_entity).with_children(|parent| {
+                parent.spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(minimap_x),
+                        top: Val::Px(minimap_z),
+                        width: Val::Px(8.0),
+                        height: Val::Px(8.0),
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    BackgroundColor(player_color),
+                    BorderColor(Color::WHITE),
+                    RemotePlayerDot {
+                        player_id: player_id.clone(),
+                    },
+                ));
+            });
+            existing_dots.insert(player_id.clone(), true);
+        }
     }
 
     // Update or create remote player dots

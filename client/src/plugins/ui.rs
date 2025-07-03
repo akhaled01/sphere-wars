@@ -1,5 +1,7 @@
 use crate::components::ui::{MessageContainer, MessageDisplay};
-use crate::systems::ui::death_screen::{DamageOverlayState, handle_damage_overlay, setup_death_screen, handle_death_screen, DeathState};
+use crate::systems::ui::death_screen::{
+    DamageOverlayState, DeathState, handle_damage_overlay, handle_death_screen, setup_death_screen,
+};
 use bevy::prelude::*;
 
 pub struct UIPlugin;
@@ -9,12 +11,15 @@ impl Plugin for UIPlugin {
         app.init_resource::<DeathState>()
             .init_resource::<DamageOverlayState>()
             .add_systems(Startup, (setup_ui, setup_death_screen))
-            .add_systems(Update, (
-                update_message_display, 
-                cleanup_expired_messages,
-                handle_death_screen,
-                handle_damage_overlay,
-            ));
+            .add_systems(
+                Update,
+                (
+                    update_message_display,
+                    cleanup_expired_messages,
+                    handle_death_screen,
+                    handle_damage_overlay,
+                ),
+            );
     }
 }
 

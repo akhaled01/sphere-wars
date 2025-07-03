@@ -104,11 +104,40 @@ fn handle_network_messages(
                 min_players,
                 game_start_time,
             } => {
-                game_data.players = players;
+                // First update game data and players
                 game_data.state = Some(state);
                 game_data.max_players = max_players;
                 game_data.min_players = min_players;
                 game_data.game_start_time = game_start_time;
+                game_data.players = players.clone();
+
+                // Then spawn entities for new players
+                for (player_id, player) in players.iter() {
+                    if Some(player_id.as_str()) == game_data.my_id.as_deref()
+                        || game_data.player_entities.contains_key(player_id)
+                    {
+                        continue;
+                    }
+
+                    let player_color =
+                        Color::srgb(player.color[0], player.color[1], player.color[2]);
+                    let entity = commands
+                        .spawn((
+                            Mesh3d(meshes.add(Sphere::new(1.5))),
+                            MeshMaterial3d(materials.add(player_color)),
+                            Transform::from_translation(player.position)
+                                .with_rotation(player.rotation),
+                            RemotePlayer {
+                                id: player_id.clone(),
+                            },
+                            Velocity::default(),
+                            Grounded(true),
+                            RotateOnLoad,
+                            Weapon::default(),
+                        ))
+                        .id();
+                    game_data.player_entities.insert(player_id.clone(), entity);
+                }
             }
             ServerMessage::PlayerUpdate { player } => {
                 // Update local player if it's us
@@ -225,12 +254,12 @@ fn handle_network_messages(
                 if let Some(player) = game_data.players.get_mut(&player_id) {
                     player.health = health;
                 }
-                
+
                 // Trigger damage overlay if this is the local player
                 if Some(player_id.as_str()) == game_data.my_id.as_deref() {
                     damage_overlay.trigger_damage_flash();
                 }
-                
+
                 println!(
                     "Player {} took {} damage from {}. Health: {}",
                     player_id, damage, damage_by, health

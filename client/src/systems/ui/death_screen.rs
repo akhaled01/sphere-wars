@@ -87,7 +87,7 @@ pub fn setup_death_screen(mut commands: Commands) {
             ..default()
         },
         BackgroundColor(Color::srgba(1.0, 0.0, 0.0, 0.3)), // Bright red with transparency
-        Visibility::Hidden, // Start hidden
+        Visibility::Hidden,                                // Start hidden
         DamageOverlay,
     ));
 }
@@ -112,7 +112,7 @@ pub fn handle_damage_overlay(
 ) {
     if damage_state.show_overlay {
         damage_state.timer.tick(time.delta());
-        
+
         if damage_state.timer.finished() {
             damage_state.show_overlay = false;
             // Hide the overlay
