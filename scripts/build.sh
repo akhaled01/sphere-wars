@@ -14,8 +14,9 @@ get_font() {
 
 get_font
 
-cargo build --bin server --release
-cargo build --bin client --release
+cargo fmt
+
+cargo build --bin server --release & cargo build --bin client --release
 
 # extract the binaries and place in bin folder
 mkdir -p bin
