@@ -61,7 +61,13 @@ fn handle_network_messages(
     network: Res<NetworkClient>,
     maze: Option<Res<SharedMaze>>,
 ) {
-    if let Some(message) = network.try_recv() {
+    while let Some(message) = network.try_recv() {
+        // Debug: Log all received messages
+        match &message {
+            ServerMessage::PlayerMoved { .. } => {} // Skip logging frequent movement messages
+            _ => println!("Received message: {:?}", std::mem::discriminant(&message)),
+        }
+
         match message {
             ServerMessage::GameJoined { player_id } => {
                 game_data.my_id = Some(player_id.clone());
@@ -231,8 +237,12 @@ fn handle_network_messages(
                 });
             }
             ServerMessage::NameAlreadyTaken => {
+                println!(
+                    "WARNING: Received NameAlreadyTaken message - this should only happen during join!"
+                );
                 error!("Name already taken");
-                std::process::exit(1);
+                // Don't exit immediately - this might be a spurious message
+                // std::process::exit(1);
             }
             ServerMessage::PlayerShot {
                 player_id,
