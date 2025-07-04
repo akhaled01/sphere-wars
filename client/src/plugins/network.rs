@@ -100,14 +100,10 @@ fn handle_network_messages(
             ServerMessage::GameState {
                 players,
                 state,
-                max_players,
-                min_players,
                 game_start_time,
             } => {
                 // First update game data and players
                 game_data.state = Some(state);
-                game_data.max_players = max_players;
-                game_data.min_players = min_players;
                 game_data.game_start_time = game_start_time;
                 game_data.players = players.clone();
 

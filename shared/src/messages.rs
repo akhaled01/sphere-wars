@@ -24,8 +24,6 @@ pub enum ServerMessage {
     GameState {
         players: HashMap<String, Player>,
         state: GameState,
-        max_players: u32,
-        min_players: u32,
         game_start_time: Option<f64>,
     },
     PlayerUpdate {

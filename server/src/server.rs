@@ -58,7 +58,6 @@ impl GameServer {
     // this handles messages, and replies accordingly
     async fn mux(&mut self, addr: SocketAddr, msg: &str) {
         let client_msg: Result<ClientMessage, _> = serde_json::from_str(msg);
-        log_info(&format!("Received from {}: {}", addr, msg));
         match client_msg {
             Ok(message) => match message {
                 ClientMessage::TestHealth => {
@@ -155,21 +154,11 @@ impl GameServer {
 
     // Handler methods for each message type
     async fn handle_join_game(&mut self, addr: SocketAddr, player_name: String) {
+        log_info(&format!("Player {} joined", player_name));
         // Check if player already exists
         if self.addr_to_id.contains_key(&addr) {
             let error_msg = ServerMessage::Error {
                 message: "Player already in game".to_string(),
-            };
-            if let Ok(response) = serde_json::to_string(&error_msg) {
-                self.send_message(addr, &response).await;
-            }
-            return;
-        }
-
-        // Check if room is full
-        if self.players.len() >= self.max_players {
-            let error_msg = ServerMessage::Error {
-                message: "Game is full".to_string(),
             };
             if let Ok(response) = serde_json::to_string(&error_msg) {
                 self.send_message(addr, &response).await;
@@ -188,15 +177,7 @@ impl GameServer {
 
         // Create new player with random color
         let player_id = Uuid::new_v4().to_string();
-        let mut player = Player::new(player_id.clone(), player_name);
-
-        // Generate random bright color
-        let mut rng = rand::thread_rng();
-        player.color = [
-            rng.gen_range(0.3..1.0), // Red component (avoid too dark)
-            rng.gen_range(0.3..1.0), // Green component
-            rng.gen_range(0.3..1.0), // Blue component
-        ];
+        let mut player = Player::new(player_id.clone(), player_name.clone());
 
         // Generate maze data if not already generated
         if self.maze_data.is_none() {
@@ -219,16 +200,19 @@ impl GameServer {
         }
 
         // Add player
+        log_info(&format!("Player {} joined", player_name));
         self.players.insert(player_id.clone(), player.clone());
         self.addr_to_id.insert(addr, player_id.clone());
 
         // Send join confirmation
+        log_info(&format!("sending GameJoined to {}", player_name));
         let join_msg = ServerMessage::GameJoined { player_id };
         if let Ok(response) = serde_json::to_string(&join_msg) {
             self.send_message(addr, &response).await;
         }
 
         // Broadcast player joined to others
+        log_info(&format!("sending PlayerJoined to {}", player_name));
         let joined_msg = ServerMessage::PlayerJoined {
             player: player.clone(),
         };
@@ -237,13 +221,13 @@ impl GameServer {
         }
 
         // Send current game state to new player
+        log_info(&format!("sending GameState to {}", player_name));
         let state_msg = ServerMessage::GameState {
             players: self.players.clone(),
             state: self.state.clone(),
-            max_players: self.max_players as u32,
-            min_players: self.min_players as u32,
             game_start_time: self.game_start_time,
         };
+
         if let Ok(response) = serde_json::to_string(&state_msg) {
             self.send_message(addr, &response).await;
         }

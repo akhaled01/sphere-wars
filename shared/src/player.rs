@@ -1,5 +1,6 @@
 use bevy::math::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
+use rand::Rng;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {
@@ -21,6 +22,7 @@ pub struct Player {
 
 impl Player {
     pub fn new(id: String, name: String) -> Self {
+        let mut rng = rand::rng();
         Self {
             id,
             name,
@@ -35,7 +37,11 @@ impl Player {
             death_time: None,
             last_damage_time: None,
             last_damage_by: None,
-            color: [1.0, 1.0, 1.0], // Default white color
+            color: [
+                rng.random_range(0.3..1.0), // Red component (avoid too dark)
+                rng.random_range(0.3..1.0), // Green component
+                rng.random_range(0.3..1.0), // Blue component
+            ],
         }
     }
 

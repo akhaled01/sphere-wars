@@ -12,8 +12,6 @@ pub struct GameData {
     pub my_id: Option<String>,
     pub players: HashMap<String, Player>,
     pub state: Option<GameState>,
-    pub max_players: u32,
-    pub min_players: u32,
     pub game_start_time: Option<f64>,
     pub player_entities: HashMap<String, Entity>,
 }
