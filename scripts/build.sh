@@ -16,7 +16,15 @@ get_font
 
 cargo fmt
 
-cargo build --bin server --release & cargo build --bin client --release
+# Build both binaries in parallel
+cargo build --bin server --release &
+server_pid=$!
+cargo build --bin client --release &
+client_pid=$!
+
+# Wait for both builds to complete
+wait $server_pid
+wait $client_pid
 
 mkdir -p bin
 cp target/release/server bin/server

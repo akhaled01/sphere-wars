@@ -1,6 +1,6 @@
 use bevy::math::{Quat, Vec3};
-use serde::{Deserialize, Serialize};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Player {

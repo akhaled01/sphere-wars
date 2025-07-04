@@ -18,8 +18,6 @@ pub struct GameServer {
     players: HashMap<String, Player>, // Map player_id to Player
     addr_to_id: HashMap<SocketAddr, String>, // Map address to player_id
     state: GameState,
-    max_players: usize,
-    min_players: usize,
     difficulty: String,
     game_start_time: Option<f64>,
     maze_seed: Option<u64>,
@@ -35,8 +33,6 @@ impl GameServer {
             players: HashMap::new(),
             addr_to_id: HashMap::new(),
             state: GameState::WaitingForPlayers,
-            max_players: 8,
-            min_players: 1,
             difficulty,
             game_start_time: None,
             maze_seed: None,
@@ -107,10 +103,6 @@ impl GameServer {
                 self.send_message(*addr, msg).await;
             }
         }
-    }
-
-    fn can_start_game(&self) -> bool {
-        self.players.len() >= self.min_players && matches!(self.state, GameState::WaitingForPlayers)
     }
 
     // Get a random available spawn point
@@ -248,7 +240,7 @@ impl GameServer {
         }
 
         // Check if game can start
-        if self.can_start_game() {
+        if self.players.len() >= 1 {
             self.state = GameState::GameStarted;
             self.game_start_time = Some(
                 std::time::SystemTime::now()
