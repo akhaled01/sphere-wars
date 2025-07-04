@@ -30,4 +30,12 @@ mkdir -p bin
 cp target/release/server bin/server
 cp target/release/client bin/client
 
-echo "Build complete"
+# Create aliases file
+cat > .aliases << 'EOF'
+alias war-server="./bin/server"
+alias war-client="./bin/client"
+EOF
+
+echo "Build complete!"
+echo "To use aliases, run: source .aliases"
+echo "Then you can use 'war-server' and 'war-client' commands"
