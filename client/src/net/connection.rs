@@ -11,7 +11,7 @@ pub struct ConnectionInfo {
 
 impl ConnectionInfo {
     pub fn prompt_user() -> Result<Self, Box<dyn std::error::Error>> {
-        println!("🎮 Welcome to Maze Wars!");
+        println!("🎮 Welcome to Sphere Wars!");
         println!("=============================");
 
         let theme = ColorfulTheme::default();

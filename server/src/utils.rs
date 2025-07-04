@@ -4,7 +4,7 @@ use crate::cli;
 use tokio::net::UdpSocket;
 
 pub fn print_info(args: &cli::Cli) {
-    println!("🎮 Maze Wars Multiplayer Server");
+    println!("🎮 Sphere Wars UDP Server");
     println!("Host: {}", args.host);
     println!("Port: {}", args.port);
 

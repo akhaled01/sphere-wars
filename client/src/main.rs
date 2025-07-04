@@ -34,7 +34,7 @@ fn main() {
     // Set up signal handlers for graceful shutdown
     setup_signal_handlers();
 
-    println!("🎮 Starting Maze Wars...");
+    println!("🎮 Starting Sphere Wars...");
     App::new()
         .add_plugins((
             get_init_plugins(),
