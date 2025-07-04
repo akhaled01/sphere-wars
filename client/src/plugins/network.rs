@@ -113,21 +113,29 @@ fn handle_network_messages(
 
                 println!("GameState received: {} players total", players.len());
                 println!("My ID: {:?}", game_data.my_id);
-                println!("Existing entities: {:?}", game_data.player_entities.keys().collect::<Vec<_>>());
+                println!(
+                    "Existing entities: {:?}",
+                    game_data.player_entities.keys().collect::<Vec<_>>()
+                );
 
                 // Then spawn entities for new players
                 for (player_id, player) in players.iter() {
                     if Some(player_id.as_str()) == game_data.my_id.as_deref()
                         || game_data.player_entities.contains_key(player_id)
                     {
-                        println!("Skipping player {}: is_local={}, has_entity={}", 
-                                player_id, 
-                                Some(player_id.as_str()) == game_data.my_id.as_deref(),
-                                game_data.player_entities.contains_key(player_id));
+                        println!(
+                            "Skipping player {}: is_local={}, has_entity={}",
+                            player_id,
+                            Some(player_id.as_str()) == game_data.my_id.as_deref(),
+                            game_data.player_entities.contains_key(player_id)
+                        );
                         continue;
                     }
 
-                    println!("Spawning remote player: {} at {:?}", player_id, player.position);
+                    println!(
+                        "Spawning remote player: {} at {:?}",
+                        player_id, player.position
+                    );
 
                     let player_color =
                         Color::srgb(player.color[0], player.color[1], player.color[2]);
