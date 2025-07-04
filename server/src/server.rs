@@ -244,8 +244,11 @@ impl GameServer {
             min_players: self.min_players as u32,
             game_start_time: self.game_start_time,
         };
+        if let Ok(response) = serde_json::to_string(&state_msg) {
+            self.send_message(addr, &response).await;
+        }
 
-        // If game has already started, send maze info to new player
+        // Then if game has already started, send maze info to new player
         if matches!(self.state, GameState::GameStarted) {
             if let Some(seed) = self.maze_seed {
                 let maze_msg = ServerMessage::GameStarted {
@@ -258,9 +261,6 @@ impl GameServer {
                     self.send_message(addr, &response).await;
                 }
             }
-        }
-        if let Ok(response) = serde_json::to_string(&state_msg) {
-            self.send_message(addr, &response).await;
         }
 
         // Check if game can start
