@@ -65,7 +65,7 @@ fn handle_network_messages(
         // Debug: Log all received messages
         match &message {
             ServerMessage::PlayerMoved { .. } => {} // Skip logging frequent movement messages
-            _ => println!("Received message: {:?}", std::mem::discriminant(&message)),
+            _ => println!("Received message: {:?}", &message),
         }
 
         match message {
