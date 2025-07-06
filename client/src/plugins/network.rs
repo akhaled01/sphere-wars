@@ -300,18 +300,64 @@ fn handle_network_messages(
                     player.deaths += 1;
                 }
 
-                // Hide dead players by scaling to zero instead of despawning
+                // Despawn and recreate the entity with zero scale to handle both 3D model and minimap
                 if let Some(entity) = game_data.player_entities.get(&player_id) {
-                    // For remote players, use remote_transforms query
-                    if Some(&player_id) != game_data.my_id.as_ref() {
-                        if let Ok(mut transform) = remote_transforms.get_mut(*entity) {
-                            transform.scale = Vec3::ZERO;
-                        }
+                    // Get the current transform before despawning
+                    let current_transform = if Some(&player_id) != game_data.my_id.as_ref() {
+                        remote_transforms.get(*entity).ok().map(|t| t.clone())
                     } else {
-                        // For local player, use player_transforms query
-                        if let Ok(mut transform) = player_transforms.get_mut(*entity) {
-                            transform.scale = Vec3::ZERO;
-                        }
+                        player_transforms.get(*entity).ok().map(|t| t.clone())
+                    };
+
+                    // Despawn the old entity
+                    commands.entity(*entity).despawn();
+
+                    if let Some(transform) = current_transform {
+                        // Get player color
+                        let player_color = if let Some(player) = game_data.players.get(&player_id) {
+                            Color::srgb(player.color[0], player.color[1], player.color[2])
+                        } else {
+                            Color::srgb(0.8, 0.2, 0.2) // Fallback color
+                        };
+
+                        // Recreate the entity with zero scale
+                        let mut new_transform = transform;
+                        new_transform.scale = Vec3::ZERO;
+
+                        let new_entity = if Some(&player_id) != game_data.my_id.as_ref() {
+                            commands
+                                .spawn((
+                                    Mesh3d(meshes.add(Sphere::new(1.5))),
+                                    MeshMaterial3d(materials.add(player_color)),
+                                    new_transform,
+                                    RemotePlayer {
+                                        id: player_id.clone(),
+                                    },
+                                    Velocity::default(),
+                                    Grounded(true),
+                                    RotateOnLoad,
+                                    Weapon::default(),
+                                ))
+                                .id()
+                        } else {
+                            commands
+                                .spawn((
+                                    Mesh3d(meshes.add(Sphere::new(1.5))),
+                                    MeshMaterial3d(materials.add(player_color)),
+                                    new_transform,
+                                    LocalPlayer,
+                                    Velocity::default(),
+                                    Grounded(true),
+                                    RotateOnLoad,
+                                    Weapon::default(),
+                                ))
+                                .id()
+                        };
+
+                        // Update the entity reference
+                        game_data
+                            .player_entities
+                            .insert(player_id.clone(), new_entity);
                     }
                 }
 
