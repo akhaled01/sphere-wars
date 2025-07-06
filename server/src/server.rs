@@ -7,23 +7,23 @@ use tokio::time::{Duration, Instant};
 use uuid::Uuid;
 
 use shared::{
-    ClientMessage, GameState, HitscanResult, MazeConfig, MazeData, Player, ServerMessage,
-    SpawnPoint, WeaponConfig, generate_maze_from_config,
+    ClientMessage, GameState, HitscanResult, MAZE_HEIGHT, MAZE_WIDTH, MazeConfig, MazeData, Player,
+    ServerMessage, SpawnPoint, WeaponConfig, generate_maze_from_config,
 };
 
 use crate::utils::{log_error, log_info};
 
 pub struct GameServer {
     listener: UdpSocket,
-    players: HashMap<String, Player>, // Map player_id to Player
-    addr_to_id: HashMap<SocketAddr, String>, // Map address to player_id
+    players: HashMap<String, Player>,
+    addr_to_id: HashMap<SocketAddr, String>,
     state: GameState,
     difficulty: String,
     game_start_time: Option<f64>,
     maze_seed: Option<u64>,
-    maze_data: Option<MazeData>, // Store generated maze data with spawn points
-    used_spawn_points: Vec<usize>, // Track which spawn points are in use
-    pending_respawns: HashMap<String, Instant>, // Track respawn timers
+    maze_data: Option<MazeData>,
+    used_spawn_points: Vec<usize>,
+    pending_respawns: HashMap<String, Instant>,
 }
 
 impl GameServer {
@@ -44,7 +44,7 @@ impl GameServer {
 
     pub async fn listen_and_serve(&mut self) {
         loop {
-            let mut buf = [0; 1024];
+            let mut buf = [0; 4096];
             let (amt, addr) = self.listener.recv_from(&mut buf).await.unwrap();
             if let Ok((client_msg, _)) =
                 bincode::serde::decode_from_slice(&buf[..amt], bincode::config::standard())
@@ -233,8 +233,8 @@ impl GameServer {
                 log_info(&format!("sending GameStarted to {}", player_name));
                 let maze_msg = ServerMessage::GameStarted {
                     seed,
-                    width: 12,  // Consistent maze size
-                    height: 12, // Consistent maze size
+                    width: MAZE_WIDTH,
+                    height: MAZE_HEIGHT,
                     difficulty: self.difficulty.clone(),
                 };
                 self.send_message(addr, &maze_msg).await;
@@ -253,8 +253,8 @@ impl GameServer {
 
             let start_msg = ServerMessage::GameStarted {
                 seed: self.maze_seed.unwrap(),
-                width: 12,
-                height: 12,
+                width: MAZE_WIDTH,
+                height: MAZE_HEIGHT,
                 difficulty: self.difficulty.clone(),
             };
             self.broadcast(&start_msg).await;

@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 
 pub type MazeGrid = Vec<Vec<bool>>;
 
+pub const MAZE_WIDTH: usize = 12;
+pub const MAZE_HEIGHT: usize = 12;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MazeConfig {
     pub seed: u64,
