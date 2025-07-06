@@ -11,7 +11,7 @@ use shared::{
     SpawnPoint, WeaponConfig, generate_maze_from_config,
 };
 
-use crate::utils::log_info;
+use crate::utils::{log_error, log_info};
 
 pub struct GameServer {
     listener: UdpSocket,
@@ -46,58 +46,71 @@ impl GameServer {
         loop {
             let mut buf = [0; 1024];
             let (amt, addr) = self.listener.recv_from(&mut buf).await.unwrap();
-            let msg = String::from_utf8_lossy(&buf[..amt]);
-            self.mux(addr, &msg).await;
-        }
-    }
-
-    // this handles messages, and replies accordingly
-    async fn mux(&mut self, addr: SocketAddr, msg: &str) {
-        let client_msg: Result<ClientMessage, _> = serde_json::from_str(msg);
-        match client_msg {
-            Ok(message) => match message {
-                ClientMessage::TestHealth => {
-                    self.handle_test_health(addr).await;
-                }
-                ClientMessage::JoinGame { player_name } => {
-                    self.handle_join_game(addr, player_name).await;
-                }
-                ClientMessage::LeaveGame => {
-                    self.handle_leave_game(addr).await;
-                }
-                ClientMessage::PlayerMove { position, rotation } => {
-                    self.handle_player_move(addr, position, rotation).await;
-                }
-                ClientMessage::PlayerShoot { origin, direction } => {
-                    self.handle_player_shoot(addr, origin, direction).await;
-                }
-                ClientMessage::Respawn => {
-                    self.handle_respawn(addr).await;
-                }
-            },
-            Err(e) => {
-                // Send error response for invalid message format
-                let error_msg = ServerMessage::Error {
-                    message: format!("Invalid message format: {}", e),
-                };
-                if let Ok(response) = serde_json::to_string(&error_msg) {
-                    self.send_message(addr, &response).await;
-                }
+            if let Ok((client_msg, _)) =
+                bincode::serde::decode_from_slice(&buf[..amt], bincode::config::standard())
+            {
+                self.mux(addr, client_msg).await;
             }
         }
     }
 
-    async fn send_message(&self, addr: SocketAddr, msg: &str) {
-        self.listener.send_to(msg.as_bytes(), addr).await.unwrap();
+    // this handles messages, and replies accordingly
+    async fn mux(&mut self, addr: SocketAddr, msg: ClientMessage) {
+        match msg {
+            ClientMessage::TestHealth => {
+                self.handle_test_health(addr).await;
+            }
+            ClientMessage::JoinGame { player_name } => {
+                self.handle_join_game(addr, player_name).await;
+            }
+            ClientMessage::LeaveGame => {
+                self.handle_leave_game(addr).await;
+            }
+            ClientMessage::PlayerMove { position, rotation } => {
+                self.handle_player_move(addr, position, rotation).await;
+            }
+            ClientMessage::PlayerShoot { origin, direction } => {
+                self.handle_player_shoot(addr, origin, direction).await;
+            }
+            ClientMessage::Respawn => {
+                self.handle_respawn(addr).await;
+            }
+        }
     }
 
-    async fn broadcast(&self, msg: &str) {
+    async fn send_message(&self, addr: SocketAddr, msg: &ServerMessage) {
+        let encoded = match bincode::serde::encode_to_vec(msg, bincode::config::standard()) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                log_error(&format!("ERROR: Failed to serialize message: {}", e));
+                return;
+            }
+        };
+
+        match self.listener.send_to(&encoded, addr).await {
+            Ok(bytes_sent) => {
+                if bytes_sent != encoded.len() {
+                    log_info(&format!(
+                        "WARNING: Only sent {} of {} bytes to {}",
+                        bytes_sent,
+                        encoded.len(),
+                        addr
+                    ));
+                }
+            }
+            Err(e) => {
+                log_error(&format!("ERROR: Failed to send message to {}: {}", addr, e));
+            }
+        }
+    }
+
+    async fn broadcast(&self, msg: &ServerMessage) {
         for addr in self.addr_to_id.keys() {
             self.send_message(*addr, msg).await;
         }
     }
 
-    async fn broadcast_to_others(&self, exclude_addr: SocketAddr, msg: &str) {
+    async fn broadcast_to_others(&self, exclude_addr: SocketAddr, msg: &ServerMessage) {
         for addr in self.addr_to_id.keys() {
             if *addr != exclude_addr {
                 self.send_message(*addr, msg).await;
@@ -139,9 +152,7 @@ impl GameServer {
     // TestHealth makes sure server is running
     async fn handle_test_health(&mut self, addr: SocketAddr) {
         let health_msg = ServerMessage::HealthCheck;
-        if let Ok(response) = serde_json::to_string(&health_msg) {
-            self.send_message(addr, &response).await;
-        }
+        self.send_message(addr, &health_msg).await;
     }
 
     // Handler methods for each message type
@@ -152,18 +163,14 @@ impl GameServer {
             let error_msg = ServerMessage::Error {
                 message: "Player already in game".to_string(),
             };
-            if let Ok(response) = serde_json::to_string(&error_msg) {
-                self.send_message(addr, &response).await;
-            }
+            self.send_message(addr, &error_msg).await;
             return;
         }
 
         // check if name is taken
         if self.players.values().any(|p| p.name == player_name) {
             let error_msg = ServerMessage::NameAlreadyTaken;
-            if let Ok(response) = serde_json::to_string(&error_msg) {
-                self.send_message(addr, &response).await;
-            }
+            self.send_message(addr, &error_msg).await;
             return;
         }
 
@@ -199,48 +206,43 @@ impl GameServer {
         // Send join confirmation
         log_info(&format!("sending GameJoined to {}", player_name));
         let join_msg = ServerMessage::GameJoined { player_id };
-        if let Ok(response) = serde_json::to_string(&join_msg) {
-            self.send_message(addr, &response).await;
-        }
+        self.send_message(addr, &join_msg).await;
 
         // Broadcast player joined to others
         log_info(&format!("sending PlayerJoined to {}", player_name));
         let joined_msg = ServerMessage::PlayerJoined {
             player: player.clone(),
         };
-        if let Ok(response) = serde_json::to_string(&joined_msg) {
-            self.broadcast_to_others(addr, &response).await;
-        }
+        self.broadcast_to_others(addr, &joined_msg).await;
 
-        // Send current game state to new player
+        // Send current game state to new player FIRST
         log_info(&format!("sending GameState to {}", player_name));
         let state_msg = ServerMessage::GameState {
             players: self.players.clone(),
             state: self.state.clone(),
             game_start_time: self.game_start_time,
         };
+        self.send_message(addr, &state_msg).await;
 
-        if let Ok(response) = serde_json::to_string(&state_msg) {
-            self.send_message(addr, &response).await;
-        }
+        // Add a small delay to ensure GameState is processed before GameStarted
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
         // Then if game has already started, send maze info to new player
         if matches!(self.state, GameState::GameStarted) {
             if let Some(seed) = self.maze_seed {
+                log_info(&format!("sending GameStarted to {}", player_name));
                 let maze_msg = ServerMessage::GameStarted {
                     seed,
                     width: 12,  // Consistent maze size
                     height: 12, // Consistent maze size
                     difficulty: self.difficulty.clone(),
                 };
-                if let Ok(response) = serde_json::to_string(&maze_msg) {
-                    self.send_message(addr, &response).await;
-                }
+                self.send_message(addr, &maze_msg).await;
             }
         }
 
-        // Check if game can start
-        if self.players.len() >= 1 {
+        // Check if game can start (only if not already started)
+        if self.players.len() >= 1 && !matches!(self.state, GameState::GameStarted) {
             self.state = GameState::GameStarted;
             self.game_start_time = Some(
                 std::time::SystemTime::now()
@@ -255,9 +257,7 @@ impl GameServer {
                 height: 12,
                 difficulty: self.difficulty.clone(),
             };
-            if let Ok(response) = serde_json::to_string(&start_msg) {
-                self.broadcast(&response).await;
-            }
+            self.broadcast(&start_msg).await;
         }
     }
 
@@ -270,9 +270,7 @@ impl GameServer {
                 let left_msg = ServerMessage::PlayerLeft {
                     player_id: player.id,
                 };
-                if let Ok(response) = serde_json::to_string(&left_msg) {
-                    self.broadcast(&response).await;
-                }
+                self.broadcast(&left_msg).await;
             }
         }
     }
@@ -288,9 +286,7 @@ impl GameServer {
                     position,
                     rotation,
                 };
-                if let Ok(response) = serde_json::to_string(&move_msg) {
-                    self.broadcast_to_others(addr, &response).await;
-                }
+                self.broadcast_to_others(addr, &move_msg).await;
             }
         }
     }
@@ -402,9 +398,7 @@ impl GameServer {
                             health: hit_player.health,
                             damage_by: shooter_id.clone(),
                         };
-                        if let Ok(response) = serde_json::to_string(&damage_msg) {
-                            self.broadcast(&response).await;
-                        }
+                        self.send_message(addr, &damage_msg).await;
 
                         if died {
                             // Update killer stats
@@ -416,9 +410,7 @@ impl GameServer {
                                 player_id: hit_player_id.clone(),
                                 killer_id: Some(shooter_id.clone()),
                             };
-                            if let Ok(response) = serde_json::to_string(&death_msg) {
-                                self.broadcast(&response).await;
-                            }
+                            self.broadcast(&death_msg).await;
 
                             // Start respawn timer
                             self.pending_respawns
@@ -433,9 +425,7 @@ impl GameServer {
                     direction,
                     hit_result,
                 };
-                if let Ok(response) = serde_json::to_string(&shot_msg) {
-                    self.broadcast(&response).await;
-                }
+                self.broadcast(&shot_msg).await;
             }
         }
     }
@@ -468,6 +458,7 @@ impl GameServer {
                         player.rotation = spawn_point.rotation;
                     } else {
                         // Fallback to default spawn if no spawn points available
+                        log_info("falling back to default spawn point");
                         player.position = Vec3::new(48.0, 2.5, 48.0);
                     }
                     player.health = player.max_health;
@@ -480,9 +471,7 @@ impl GameServer {
                         player_id: player_id.clone(),
                         position: player.position,
                     };
-                    if let Ok(response) = serde_json::to_string(&respawn_msg) {
-                        self.broadcast(&response).await;
-                    }
+                    self.broadcast(&respawn_msg).await;
 
                     // Remove respawn timer
                     self.pending_respawns.remove(&player_id);
@@ -500,9 +489,7 @@ impl GameServer {
                                     remaining_time.as_secs_f32()
                                 ),
                             };
-                            if let Ok(response) = serde_json::to_string(&error_msg) {
-                                self.send_message(addr, &response).await;
-                            }
+                            self.send_message(addr, &error_msg).await;
                         }
                     }
                 }
@@ -521,9 +508,7 @@ impl GameServer {
             reason: "Server is shutting down".to_string(),
         };
 
-        if let Ok(response) = serde_json::to_string(&shutdown_msg) {
-            self.broadcast(&response).await;
-        }
+        self.broadcast(&shutdown_msg).await;
 
         // Give clients a moment to receive the message
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;

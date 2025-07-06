@@ -96,12 +96,12 @@ fn test_server_health(host: &str, port: u16) -> bool {
     let server_addr = format!("{}:{}", host, port);
     let test_msg = ClientMessage::TestHealth;
 
-    let serialized = match serde_json::to_string(&test_msg) {
+    let serialized = match bincode::serde::encode_to_vec(&test_msg, bincode::config::standard()) {
         Ok(s) => s,
         Err(_) => return false,
     };
 
-    if socket.send_to(serialized.as_bytes(), &server_addr).is_err() {
+    if socket.send_to(&serialized, &server_addr).is_err() {
         return false;
     }
 
@@ -109,7 +109,11 @@ fn test_server_health(host: &str, port: u16) -> bool {
     match socket.recv_from(&mut buf) {
         Ok((len, _)) => {
             let response = String::from_utf8_lossy(&buf[..len]);
-            serde_json::from_str::<ServerMessage>(&response).is_ok()
+            bincode::serde::decode_from_slice::<ServerMessage, _>(
+                &response.as_bytes(),
+                bincode::config::standard(),
+            )
+            .is_ok()
         }
         Err(_) => false,
     }
@@ -130,12 +134,12 @@ fn test_username_availability(host: &str, port: u16, username: &str) -> Username
         player_name: username.to_string(),
     };
 
-    let serialized = match serde_json::to_string(&join_msg) {
+    let serialized = match bincode::serde::encode_to_vec(&join_msg, bincode::config::standard()) {
         Ok(s) => s,
         Err(e) => return UsernameStatus::Error(format!("Failed to serialize message: {}", e)),
     };
 
-    if let Err(e) = socket.send_to(serialized.as_bytes(), &server_addr) {
+    if let Err(e) = socket.send_to(&serialized, &server_addr) {
         return UsernameStatus::Error(format!("Failed to send message: {}", e));
     }
 
@@ -143,13 +147,18 @@ fn test_username_availability(host: &str, port: u16, username: &str) -> Username
     match socket.recv_from(&mut buf) {
         Ok((len, _)) => {
             let response = String::from_utf8_lossy(&buf[..len]);
-            match serde_json::from_str::<ServerMessage>(&response) {
-                Ok(ServerMessage::NameAlreadyTaken) => UsernameStatus::Taken,
-                Ok(ServerMessage::GameJoined { .. }) => {
+            match bincode::serde::decode_from_slice::<ServerMessage, _>(
+                &response.as_bytes(),
+                bincode::config::standard(),
+            ) {
+                Ok((ServerMessage::NameAlreadyTaken, _)) => UsernameStatus::Taken,
+                Ok((ServerMessage::GameJoined { .. }, _)) => {
                     // Send leave message to clean up the test connection
                     let leave_msg = ClientMessage::LeaveGame;
-                    if let Ok(leave_serialized) = serde_json::to_string(&leave_msg) {
-                        let _ = socket.send_to(leave_serialized.as_bytes(), &server_addr);
+                    if let Ok(leave_serialized) =
+                        bincode::serde::encode_to_vec(&leave_msg, bincode::config::standard())
+                    {
+                        let _ = socket.send_to(&leave_serialized, &server_addr);
                     }
                     UsernameStatus::Available
                 }

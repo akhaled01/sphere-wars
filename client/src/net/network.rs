@@ -29,18 +29,17 @@ impl NetworkClient {
             player_name: self.player_name.clone(),
         };
 
-        if let Ok(msg) = serde_json::to_string(&join_msg) {
-            let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
+        if let Ok(encoded) = bincode::serde::encode_to_vec(&join_msg, bincode::config::standard()) {
+            let _ = self.socket.send_to(&encoded, self.server_addr);
         }
     }
 
     pub fn try_recv(&self) -> Option<ServerMessage> {
-        let mut buf = [0; 1024];
+        let mut buf = [0; 65536]; // Increased buffer size for binary data
         match self.socket.recv_from(&mut buf) {
-            Ok((n, _)) => {
-                let msg = String::from_utf8_lossy(&buf[..n]);
-                serde_json::from_str(&msg).ok()
-            }
+            Ok((n, _)) => bincode::serde::decode_from_slice(&buf[..n], bincode::config::standard())
+                .ok()
+                .map(|(msg, _)| msg),
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => None,
             Err(_) => None,
         }
@@ -48,29 +47,33 @@ impl NetworkClient {
 
     pub fn send_move(&self, position: Vec3, rotation: Quat) {
         let move_msg = ClientMessage::PlayerMove { position, rotation };
-        if let Ok(msg) = serde_json::to_string(&move_msg) {
-            let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
+        if let Ok(encoded) = bincode::serde::encode_to_vec(&move_msg, bincode::config::standard()) {
+            let _ = self.socket.send_to(&encoded, self.server_addr);
         }
     }
 
     pub fn send_shoot(&self, origin: Vec3, direction: Vec3) {
         let shoot_msg = ClientMessage::PlayerShoot { origin, direction };
-        if let Ok(msg) = serde_json::to_string(&shoot_msg) {
-            let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
+        if let Ok(encoded) = bincode::serde::encode_to_vec(&shoot_msg, bincode::config::standard())
+        {
+            let _ = self.socket.send_to(&encoded, self.server_addr);
         }
     }
 
     pub fn send_respawn(&self) {
         let respawn_msg = ClientMessage::Respawn;
-        if let Ok(msg) = serde_json::to_string(&respawn_msg) {
-            let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
+        if let Ok(encoded) =
+            bincode::serde::encode_to_vec(&respawn_msg, bincode::config::standard())
+        {
+            let _ = self.socket.send_to(&encoded, self.server_addr);
         }
     }
 
     pub fn send_leave_game(&self) {
         let leave_msg = ClientMessage::LeaveGame;
-        if let Ok(msg) = serde_json::to_string(&leave_msg) {
-            let _ = self.socket.send_to(msg.as_bytes(), self.server_addr);
+        if let Ok(encoded) = bincode::serde::encode_to_vec(&leave_msg, bincode::config::standard())
+        {
+            let _ = self.socket.send_to(&encoded, self.server_addr);
         }
     }
 
