@@ -214,7 +214,9 @@ fn handle_network_messages(
                 // Only remove and despawn if it's not the local player
                 if Some(player_id.as_str()) != game_data.my_id.as_deref() {
                     if let Some(entity) = game_data.player_entities.remove(&player_id) {
-                        commands.entity(entity).despawn();
+                        if commands.get_entity(entity).is_ok() {
+                            commands.entity(entity).despawn();
+                        }
                     }
                 }
             }
@@ -293,7 +295,6 @@ fn handle_network_messages(
                 player_id,
                 killer_id,
             } => {
-                // Update player state
                 if let Some(player) = game_data.players.get_mut(&player_id) {
                     player.is_alive = false;
                     player.health = 0.0;
@@ -310,7 +311,9 @@ fn handle_network_messages(
                     };
 
                     // Despawn the old entity
-                    commands.entity(*entity).despawn();
+                    if commands.get_entity(*entity).is_ok() {
+                        commands.entity(*entity).despawn();
+                    }
 
                     if let Some(transform) = current_transform {
                         // Get player color
@@ -619,7 +622,9 @@ fn cleanup_hit_effects(
     for (entity, mut hit_effect) in query.iter_mut() {
         hit_effect.timer.tick(time.delta());
         if hit_effect.timer.finished() {
-            commands.entity(entity).despawn();
+            if commands.get_entity(entity).is_ok() {
+                commands.entity(entity).despawn();
+            }
         }
     }
 }

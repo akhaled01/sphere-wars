@@ -208,22 +208,24 @@ pub fn update_player_position_on_minimap(
         // Create new remote player dot
         if let Ok(minimap_entity) = minimap_query.single() {
             commands.entity(minimap_entity).with_children(|parent| {
-                parent.spawn((
-                    Node {
-                        position_type: PositionType::Absolute,
-                        left: Val::Px(minimap_x),
-                        top: Val::Px(minimap_z),
-                        width: Val::Px(8.0),
-                        height: Val::Px(8.0),
-                        border: UiRect::all(Val::Px(1.0)),
-                        ..default()
-                    },
-                    BackgroundColor(player_color),
-                    BorderColor(Color::WHITE),
-                    RemotePlayerDot {
-                        player_id: player_id.clone(),
-                    },
-                ));
+                if player.is_alive {
+                    parent.spawn((
+                        Node {
+                            position_type: PositionType::Absolute,
+                            left: Val::Px(minimap_x),
+                            top: Val::Px(minimap_z),
+                            width: Val::Px(8.0),
+                            height: Val::Px(8.0),
+                            border: UiRect::all(Val::Px(1.0)),
+                            ..default()
+                        },
+                        BackgroundColor(player_color),
+                        BorderColor(Color::WHITE),
+                        RemotePlayerDot {
+                            player_id: player_id.clone(),
+                        },
+                    ));
+                }
             });
             existing_dots.insert(player_id.clone(), true);
         }
@@ -260,24 +262,28 @@ pub fn update_player_position_on_minimap(
                     Color::srgb(0.0, 0.0, 1.0) // Fallback blue
                 };
 
+                let player = game_data.players.get(&remote_player.id).unwrap();
+
                 // Create new remote player dot
                 commands.entity(minimap_entity).with_children(|parent| {
-                    parent.spawn((
-                        Node {
-                            position_type: PositionType::Absolute,
-                            left: Val::Px(minimap_x),
-                            top: Val::Px(minimap_z),
-                            width: Val::Px(8.0),
-                            height: Val::Px(8.0),
-                            border: UiRect::all(Val::Px(1.0)),
-                            ..default()
-                        },
-                        BackgroundColor(player_color),
-                        BorderColor(Color::WHITE),
-                        RemotePlayerDot {
-                            player_id: remote_player.id.clone(),
-                        },
-                    ));
+                    if player.is_alive {
+                        parent.spawn((
+                            Node {
+                                position_type: PositionType::Absolute,
+                                left: Val::Px(minimap_x),
+                                top: Val::Px(minimap_z),
+                                width: Val::Px(8.0),
+                                height: Val::Px(8.0),
+                                border: UiRect::all(Val::Px(1.0)),
+                                ..default()
+                            },
+                            BackgroundColor(player_color),
+                            BorderColor(Color::WHITE),
+                            RemotePlayerDot {
+                                player_id: remote_player.id.clone(),
+                            },
+                        ));
+                    }
                 });
             } else {
                 // Update existing remote player dot
@@ -302,28 +308,39 @@ pub fn update_player_position_on_minimap(
 
 // System to update player dot colors based on server-assigned colors
 pub fn update_player_dot_colors(
-    mut player_dot_query: Query<&mut BackgroundColor, With<PlayerDot>>,
-    mut remote_dot_query: Query<(&mut BackgroundColor, &RemotePlayerDot), Without<PlayerDot>>,
+    mut player_dot_query: Query<(&mut BackgroundColor, &mut BorderColor), With<PlayerDot>>,
+    mut remote_dot_query: Query<
+        (&mut BackgroundColor, &mut BorderColor, &RemotePlayerDot),
+        Without<PlayerDot>,
+    >,
     game_data: Res<GameData>,
 ) {
     // Update local player dot color
     if let Some(my_id) = &game_data.my_id {
         if let Some(player) = game_data.players.get(my_id) {
-            if let Ok(mut bg_color) = player_dot_query.single_mut() {
+            if let Ok(mut colors) = player_dot_query.single_mut() {
                 let new_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
-                if bg_color.0 != new_color {
-                    bg_color.0 = new_color;
+                if colors.0.0 != new_color {
+                    colors.0.0 = new_color;
+                    colors.1.0 = Color::WHITE;
                 }
             }
         }
     }
 
     // Update remote player dot colors
-    for (mut bg_color, remote_dot) in remote_dot_query.iter_mut() {
+    for (mut bg_color, mut border_color, remote_dot) in remote_dot_query.iter_mut() {
         if let Some(player) = game_data.players.get(&remote_dot.player_id) {
-            let new_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
-            if bg_color.0 != new_color {
-                bg_color.0 = new_color;
+            if player.is_alive {
+                let new_color = Color::srgb(player.color[0], player.color[1], player.color[2]);
+                if bg_color.0 != new_color {
+                    bg_color.0 = new_color;
+                    border_color.0 = Color::WHITE;
+                }
+            } else {
+                // make the box transparent
+                bg_color.0 = Color::srgba(0.0, 0.0, 0.0, 0.0);
+                border_color.0 = Color::srgba(0.0, 0.0, 0.0, 0.0);
             }
         }
     }
