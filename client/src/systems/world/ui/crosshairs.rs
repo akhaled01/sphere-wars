@@ -8,7 +8,7 @@ pub fn setup_crosshairs(mut commands: Commands) {
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Percent(50.0),
-                top: Val::Percent(50.0),
+                top: Val::Percent(60.0),
                 width: Val::Px(20.0),
                 height: Val::Px(20.0),
                 // Center the crosshairs by offsetting by half their size

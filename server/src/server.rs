@@ -374,14 +374,24 @@ impl GameServer {
                 // Check for hits against other players
                 for (other_id, other_player) in self.players.iter() {
                     if other_id != shooter_id && other_player.is_alive {
-                        let distance = origin.distance(other_player.position);
+                        let to_player = other_player.position - origin;
+                        let distance = to_player.length();
+
+                        // Check if player is within range and closer than any previous hit
                         if distance <= weapon_config.range && distance < hit_result.distance {
-                            // Check if there's a wall between shooter and target
-                            if !self.ray_intersects_wall(origin, other_player.position) {
-                                hit_result.hit = true;
-                                hit_result.hit_position = Some(other_player.position);
-                                hit_result.hit_player_id = Some(other_id.clone());
-                                hit_result.distance = distance;
+                            // Check if ray is pointing towards player (dot product > 0)
+                            let to_player_dir = to_player.normalize();
+                            let dot = direction.dot(to_player_dir);
+
+                            // Allow some tolerance for near-misses (dot > 0.9 means within ~25 degrees)
+                            if dot > 0.9 {
+                                // Check if there's a wall between shooter and target
+                                if !self.ray_intersects_wall(origin, other_player.position) {
+                                    hit_result.hit = true;
+                                    hit_result.hit_position = Some(other_player.position);
+                                    hit_result.hit_player_id = Some(other_id.clone());
+                                    hit_result.distance = distance;
+                                }
                             }
                         }
                     }

@@ -12,7 +12,7 @@ pub fn follow_camera_system(
             // Position camera higher and slightly forward to avoid seeing tank parts
             // Use the player's forward direction to offset the camera properly
             let forward = player_transform.forward();
-            let camera_offset = Vec3::new(0.0, 3.5, 0.0) + forward * 1.5; // Higher and forward
+            let camera_offset = Vec3::new(0.0, 1.9, 0.0) + forward * 1.5; // Slightly above player height
             camera_transform.translation = player_pos + camera_offset;
         }
     }
@@ -38,18 +38,17 @@ pub fn camera_look_sys(
     let (yaw_rotation, pitch_rotation) = {
         let mut camera_query = query_set.p0();
         if let Some((_, mut controller)) = camera_query.iter_mut().next() {
-            // Update yaw and pitch
+            // Only update yaw (horizontal rotation)
             controller.yaw -= delta.x * controller.sensitivity;
-            controller.pitch -= delta.y * controller.sensitivity;
 
-            // Clamp pitch to prevent over-rotation (looking too far up/down)
-            controller.pitch = controller.pitch.clamp(-89.0, 89.0);
+            // Set a fixed downward pitch to aim at other players
+            controller.pitch = 10.0;
 
             let yaw_radians = controller.yaw.to_radians();
-            let pitch_radians = controller.pitch.to_radians();
 
+            // Only create yaw quaternion, no pitch rotation
             let yaw_quat = Quat::from_axis_angle(Vec3::Y, yaw_radians);
-            let pitch_quat = Quat::from_axis_angle(Vec3::X, pitch_radians);
+            let pitch_quat = Quat::IDENTITY; // No pitch rotation
 
             (yaw_quat, pitch_quat)
         } else {
