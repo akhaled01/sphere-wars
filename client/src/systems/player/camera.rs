@@ -12,7 +12,7 @@ pub fn follow_camera_system(
             // Position camera higher and slightly forward to avoid seeing tank parts
             // Use the player's forward direction to offset the camera properly
             let forward = player_transform.forward();
-            let camera_offset = Vec3::new(0.0, 1.9, 0.0) + forward * 1.5; // Slightly above player height
+            let camera_offset = Vec3::new(0.0, 1.0, 0.0) + forward * 1.5; // Lower camera position
             camera_transform.translation = player_pos + camera_offset;
         }
     }

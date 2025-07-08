@@ -296,7 +296,7 @@ impl GameServer {
         if let Some(maze_data) = &self.maze_data {
             const TILE_SIZE: f32 = 4.0; // Same as client rendering
             const WALL_HEIGHT: f32 = 8.0; // Wall height from client rendering
-            const PLAYER_RADIUS: f32 = 1.5; // Player hitbox radius
+            const PLAYER_RADIUS: f32 = 1.0; // Player hitbox radius
 
             let grid = &maze_data.grid;
             let grid_height = grid.len();
@@ -319,15 +319,20 @@ impl GameServer {
             for (z, row) in grid.iter().enumerate() {
                 for (x, &is_wall) in row.iter().enumerate() {
                     if is_wall {
-                        // Calculate wall box bounds
-                        let wall_center_x = x as f32 * TILE_SIZE + offset_x;
-                        let wall_center_z = z as f32 * TILE_SIZE + offset_z;
+                        // Calculate wall box bounds (centered on tile, matching client positioning)
+                        let wall_center_x = x as f32 * TILE_SIZE + offset_x + TILE_SIZE / 2.0;
+                        let wall_center_z = z as f32 * TILE_SIZE + offset_z + TILE_SIZE / 2.0;
 
-                        let box_min = Vec3::new(wall_center_x, 0.0, wall_center_z);
+                        // Create box bounds centered on the wall position
+                        let box_min = Vec3::new(
+                            wall_center_x - TILE_SIZE / 2.0,
+                            0.0,
+                            wall_center_z - TILE_SIZE / 2.0,
+                        );
                         let box_max = Vec3::new(
-                            wall_center_x + TILE_SIZE,
+                            wall_center_x + TILE_SIZE / 2.0,
                             WALL_HEIGHT,
-                            wall_center_z + TILE_SIZE,
+                            wall_center_z + TILE_SIZE / 2.0,
                         );
 
                         // Perform ray-box intersection test
@@ -336,6 +341,7 @@ impl GameServer {
                         {
                             // Check if intersection is within ray length and not too close to target
                             if hit_distance > 0.1 && hit_distance < ray_length - PLAYER_RADIUS {
+                                log_info(&format!("Ray intersects wall at {}", hit_distance));
                                 return true;
                             }
                         }
@@ -344,6 +350,7 @@ impl GameServer {
             }
         }
 
+        log_info(&format!("Ray does not intersect any wall, shot confirmed"));
         false // No wall intersection found
     }
 
