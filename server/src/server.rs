@@ -295,7 +295,8 @@ impl GameServer {
     fn ray_intersects_wall(&self, origin: Vec3, target: Vec3) -> bool {
         if let Some(maze_data) = &self.maze_data {
             const TILE_SIZE: f32 = 4.0; // Same as client rendering
-            const PLAYER_RADIUS: f32 = 0.8; // Player hitbox radius
+            const WALL_HEIGHT: f32 = 8.0; // Wall height from client rendering
+            const PLAYER_RADIUS: f32 = 1.5; // Player hitbox radius
 
             let grid = &maze_data.grid;
             let grid_height = grid.len();
@@ -314,43 +315,29 @@ impl GameServer {
             let ray_dir = (target - origin).normalize();
             let ray_length = origin.distance(target);
 
-            // Use smaller step size for more precision
-            let step_size = 0.2;
-            let num_steps = (ray_length / step_size) as i32;
+            // Check each wall tile for ray-box intersection
+            for (z, row) in grid.iter().enumerate() {
+                for (x, &is_wall) in row.iter().enumerate() {
+                    if is_wall {
+                        // Calculate wall box bounds
+                        let wall_center_x = x as f32 * TILE_SIZE + offset_x;
+                        let wall_center_z = z as f32 * TILE_SIZE + offset_z;
 
-            for i in 1..num_steps {
-                // Start from 1 to skip shooter position, end before target
-                let t = (i as f32) * step_size;
-                let ray_pos = origin + ray_dir * t;
+                        let box_min = Vec3::new(wall_center_x, 0.0, wall_center_z);
+                        let box_max = Vec3::new(
+                            wall_center_x + TILE_SIZE,
+                            WALL_HEIGHT,
+                            wall_center_z + TILE_SIZE,
+                        );
 
-                // Only check at player height (around chest level)
-                if ray_pos.y < 1.0 || ray_pos.y > 3.0 {
-                    continue;
-                }
-
-                // Convert world position to grid coordinates
-                let world_x = ray_pos.x - offset_x;
-                let world_z = ray_pos.z - offset_z;
-
-                let grid_x = (world_x / TILE_SIZE).floor() as i32;
-                let grid_z = (world_z / TILE_SIZE).floor() as i32;
-
-                // Check bounds
-                if grid_x >= 0
-                    && grid_x < grid_width as i32
-                    && grid_z >= 0
-                    && grid_z < grid_height as i32
-                {
-                    let grid_x = grid_x as usize;
-                    let grid_z = grid_z as usize;
-
-                    // Check if this position has a wall
-                    if grid[grid_z][grid_x] {
-                        // Additional check: make sure we're not too close to the target
-                        // (to account for player standing right next to wall)
-                        let remaining_distance = ray_pos.distance(target);
-                        if remaining_distance > PLAYER_RADIUS {
-                            return true; // Ray hit a wall with sufficient distance from target
+                        // Perform ray-box intersection test
+                        if let Some(hit_distance) =
+                            self.ray_box_intersection(origin, ray_dir, box_min, box_max)
+                        {
+                            // Check if intersection is within ray length and not too close to target
+                            if hit_distance > 0.1 && hit_distance < ray_length - PLAYER_RADIUS {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -358,6 +345,75 @@ impl GameServer {
         }
 
         false // No wall intersection found
+    }
+
+    // Ray-box intersection using the slab method
+    fn ray_box_intersection(
+        &self,
+        ray_origin: Vec3,
+        ray_dir: Vec3,
+        box_min: Vec3,
+        box_max: Vec3,
+    ) -> Option<f32> {
+        let mut t_min: f32 = 0.0;
+        let mut t_max: f32 = f32::INFINITY;
+
+        // Check intersection with each axis
+        for i in 0..3 {
+            let origin_component = match i {
+                0 => ray_origin.x,
+                1 => ray_origin.y,
+                2 => ray_origin.z,
+                _ => unreachable!(),
+            };
+            let dir_component = match i {
+                0 => ray_dir.x,
+                1 => ray_dir.y,
+                2 => ray_dir.z,
+                _ => unreachable!(),
+            };
+            let box_min_component = match i {
+                0 => box_min.x,
+                1 => box_min.y,
+                2 => box_min.z,
+                _ => unreachable!(),
+            };
+            let box_max_component = match i {
+                0 => box_max.x,
+                1 => box_max.y,
+                2 => box_max.z,
+                _ => unreachable!(),
+            };
+
+            if dir_component.abs() < 1e-6_f32 {
+                // Ray is parallel to the slab
+                if origin_component < box_min_component || origin_component > box_max_component {
+                    return None; // Ray misses the box
+                }
+            } else {
+                // Calculate intersection distances
+                let t1 = (box_min_component - origin_component) / dir_component;
+                let t2 = (box_max_component - origin_component) / dir_component;
+
+                let (t_near, t_far) = if t1 < t2 { (t1, t2) } else { (t2, t1) };
+
+                t_min = t_min.max(t_near);
+                t_max = t_max.min(t_far);
+
+                if t_min > t_max {
+                    return None; // No intersection
+                }
+            }
+        }
+
+        // Return the closest intersection distance (if positive)
+        if t_min > 0.0_f32 {
+            Some(t_min)
+        } else if t_max > 0.0_f32 {
+            Some(t_max)
+        } else {
+            None
+        }
     }
 
     async fn handle_player_shoot(&mut self, addr: SocketAddr, origin: Vec3, direction: Vec3) {
